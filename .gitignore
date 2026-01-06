@@ -5,6 +5,5 @@ __pycache__/
 # Virtual envs
 venv/
 .env
-
 # DB locale
 *.db
