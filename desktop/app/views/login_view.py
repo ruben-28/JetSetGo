@@ -1,7 +1,13 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton,
-    QMessageBox, QTabWidget
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QMessageBox,
+    QTabWidget,
 )
+
 
 class LoginView(QWidget):
     def __init__(self):
