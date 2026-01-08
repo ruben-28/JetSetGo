@@ -10,34 +10,42 @@ class LoginView(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("JetSetGo - Connexion")
-        self.setFixedSize(420, 520)
+        self.resize(1024, 768)  # Grande taille par défaut
 
         # Main layout
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setAlignment(Qt.AlignCenter)  # Centrer le contenu
+        layout.setContentsMargins(50, 50, 50, 50)
         layout.setSpacing(20)
+
+        # Container pour centrer le form
+        container = QWidget()
+        container.setFixedWidth(450)  # Garder le formulaire à une largeur raisonnable
+        container_layout = QVBoxLayout(container)
+        container_layout.setSpacing(20)
+        layout.addWidget(container)
 
         # Header
         logo = QLabel("✈")
-        logo.setStyleSheet("font-size: 42px;")
+        logo.setStyleSheet("font-size: 64px;")  # Logo plus grand
         logo.setAlignment(Qt.AlignCenter)
-        layout.addWidget(logo)
+        container_layout.addWidget(logo)
 
-        title = QLabel("JetSetGo")
+        title = QLabel('JetSet<span style="color: #ff6b35;">Go</span>')
         title.setObjectName("title")
         title.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title)
+        container_layout.addWidget(title)
 
         subtitle = QLabel("Trouvez les meilleurs vols au meilleur prix")
         subtitle.setObjectName("subtitle")
         subtitle.setAlignment(Qt.AlignCenter)
-        layout.addWidget(subtitle)
+        container_layout.addWidget(subtitle)
 
-        layout.addSpacing(10)
+        container_layout.addSpacing(20)
 
         # Tabs
         self.tabs = QTabWidget()
-        layout.addWidget(self.tabs)
+        container_layout.addWidget(self.tabs)
 
         # Login Tab
         login_widget = QWidget()
@@ -47,19 +55,19 @@ class LoginView(QWidget):
 
         self.login_user = QLineEdit()
         self.login_user.setPlaceholderText("Username ou Email")
-        self.login_user.setMinimumHeight(40)
+        self.login_user.setMinimumHeight(45)
         self._set_placeholder_color(self.login_user)
         login_layout.addWidget(self.login_user)
 
         self.login_pass = QLineEdit()
         self.login_pass.setPlaceholderText("Mot de passe")
         self.login_pass.setEchoMode(QLineEdit.Password)
-        self.login_pass.setMinimumHeight(40)
+        self.login_pass.setMinimumHeight(45)
         self._set_placeholder_color(self.login_pass)
         login_layout.addWidget(self.login_pass)
 
         self.login_btn = QPushButton("Se connecter")
-        self.login_btn.setMinimumHeight(42)
+        self.login_btn.setMinimumHeight(50)
         self.login_btn.setCursor(Qt.PointingHandCursor)
         login_layout.addWidget(self.login_btn)
 
@@ -73,25 +81,25 @@ class LoginView(QWidget):
 
         self.reg_username = QLineEdit()
         self.reg_username.setPlaceholderText("Username")
-        self.reg_username.setMinimumHeight(40)
+        self.reg_username.setMinimumHeight(45)
         self._set_placeholder_color(self.reg_username)
         register_layout.addWidget(self.reg_username)
 
         self.reg_email = QLineEdit()
         self.reg_email.setPlaceholderText("Email")
-        self.reg_email.setMinimumHeight(40)
+        self.reg_email.setMinimumHeight(45)
         self._set_placeholder_color(self.reg_email)
         register_layout.addWidget(self.reg_email)
 
         self.reg_pass = QLineEdit()
         self.reg_pass.setPlaceholderText("Mot de passe")
         self.reg_pass.setEchoMode(QLineEdit.Password)
-        self.reg_pass.setMinimumHeight(40)
+        self.reg_pass.setMinimumHeight(45)
         self._set_placeholder_color(self.reg_pass)
         register_layout.addWidget(self.reg_pass)
 
         self.reg_btn = QPushButton("Créer un compte")
-        self.reg_btn.setMinimumHeight(42)
+        self.reg_btn.setMinimumHeight(50)
         self.reg_btn.setCursor(Qt.PointingHandCursor)
         register_layout.addWidget(self.reg_btn)
 
@@ -102,16 +110,16 @@ class LoginView(QWidget):
         self.tabs.addTab(register_widget, "Inscription")
 
         # Footer
-        layout.addSpacing(5)
+        container_layout.addSpacing(10)
         footer = QLabel("© 2026 JetSetGo")
-        footer.setStyleSheet("color: #6e7681; font-size: 11px;")
+        footer.setStyleSheet("color: #6e7681; font-size: 12px;")
         footer.setAlignment(Qt.AlignCenter)
-        layout.addWidget(footer)
+        container_layout.addWidget(footer)
 
     def _set_placeholder_color(self, line_edit: QLineEdit):
         """Set placeholder text color."""
         palette = line_edit.palette()
-        palette.setColor(QPalette.PlaceholderText, QColor("#8b949e"))
+        palette.setColor(QPalette.PlaceholderText, QColor("#6e7781"))
         line_edit.setPalette(palette)
 
     def show_error(self, message: str):

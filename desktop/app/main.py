@@ -8,8 +8,8 @@ from presenters.login_presenter import LoginPresenter
 
 
 def load_stylesheet():
-    """Load the dark theme stylesheet."""
-    style_path = Path(__file__).parent / "styles" / "dark_theme.qss"
+    """Load the light theme stylesheet."""
+    style_path = Path(__file__).parent / "styles" / "light_theme.qss"
     if style_path.exists():
         with open(style_path, "r", encoding="utf-8") as f:
             return f.read()

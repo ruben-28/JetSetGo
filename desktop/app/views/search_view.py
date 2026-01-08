@@ -11,17 +11,17 @@ class SearchView(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("JetSetGo - Recherche de Vols")
-        self.setMinimumSize(950, 600)
+        self.resize(1280, 800)  # Grande taille par défaut
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(25, 25, 25, 25)
-        layout.setSpacing(20)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(25)
 
         # Header
         header = QHBoxLayout()
         
-        title = QLabel("✈ JetSetGo")
-        title.setStyleSheet("font-size: 26px; font-weight: bold; color: #58a6ff;")
+        title = QLabel('✈ JetSet<span style="color: #ff6b35;">Go</span>')
+        title.setStyleSheet("font-size: 26px; font-weight: 800; color: #0a2342;")
         header.addWidget(title)
         
         header.addStretch()
@@ -120,7 +120,7 @@ class SearchView(QWidget):
     def _set_placeholder_color(self, line_edit: QLineEdit):
         """Set placeholder text color."""
         palette = line_edit.palette()
-        palette.setColor(QPalette.PlaceholderText, QColor("#8b949e"))
+        palette.setColor(QPalette.PlaceholderText, QColor("#6e7781"))
         line_edit.setPalette(palette)
 
     def _on_selection_changed(self):
