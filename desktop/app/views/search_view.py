@@ -1,80 +1,142 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QMessageBox,
-    QHeaderView
+    QHeaderView, QFrame, QComboBox, QDateEdit
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPalette, QColor
+from PySide6.QtCore import Qt, QDate
+from PySide6.QtGui import QPalette, QColor, QIcon
+from pathlib import Path
 
 
 class SearchView(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("JetSetGo - Recherche de Vols")
-        self.resize(1280, 800)  # Grande taille par défaut
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(25)
-
-        # Header
-        header = QHBoxLayout()
         
-        title = QLabel('✈ JetSet<span style="color: #ff6b35;">Go</span>')
-        title.setStyleSheet("font-size: 26px; font-weight: 800; color: #0a2342;")
-        header.addWidget(title)
+        # Force window icon
+        icon_path = Path(__file__).parent.parent.parent / "assets" / "logo.jpg"
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
+
+        self.resize(1400, 900)
+        self.setObjectName("centralWidget")
+
+        # Main layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(25, 25, 25, 25)
+        main_layout.setSpacing(25)
+
+        # ============================================
+        # HEADER WITH LOGO & NAVIGATION
+        # ============================================
+        header = QHBoxLayout()
+        header.setSpacing(20)
+        
+        # Logo/Title
+        logo_title = QLabel('✈️ JetSet<span style="color: #ff6b35;">Go</span>')
+        logo_title.setObjectName("appTitle")
+        logo_title.setTextFormat(Qt.RichText)
+        header.addWidget(logo_title)
         
         header.addStretch()
         
-        user_label = QLabel("Utilisateur")
-        user_label.setStyleSheet("color: #8b949e;")
-        header.addWidget(user_label)
+        # Navigation buttons
+        flights_btn = QPushButton("Flights")
+        flights_btn.setObjectName("iconButton")
+        flights_btn.setMinimumHeight(40)
+        header.addWidget(flights_btn)
         
-        layout.addLayout(header)
+        hotels_btn = QPushButton("Hotels")
+        hotels_btn.setObjectName("iconButton")
+        hotels_btn.setMinimumHeight(40)
+        header.addWidget(hotels_btn)
+        
+        profile_btn = QPushButton("Profile")
+        profile_btn.setObjectName("iconButton")
+        profile_btn.setMinimumHeight(40)
+        header.addWidget(profile_btn)
+        
+        main_layout.addLayout(header)
 
-        # Search Form
-        form_layout = QHBoxLayout()
-        form_layout.setSpacing(10)
+        # ============================================
+        # SEARCH PANEL (GLASSMORPHISM)
+        # ============================================
+        search_frame = QFrame()
+        search_frame.setObjectName("searchPanel")
+        search_layout = QVBoxLayout(search_frame)
+        search_layout.setContentsMargins(20, 20, 20, 20)
+        search_layout.setSpacing(18)
 
+        # Search title
+        search_title = QLabel("Rechercher votre vol")
+        search_title.setObjectName("sectionTitle")
+        search_layout.addWidget(search_title)
+
+        # Single row with ALL fields
+        form_row = QHBoxLayout()
+        form_row.setSpacing(12)
+        
+        # Departure
+        self.departure = QLineEdit()
+        self.departure.setPlaceholderText("✈️ Départ")
+        self.departure.setMinimumHeight(48)
+        form_row.addWidget(self.departure)
+        
+        # Destination
         self.destination = QLineEdit()
-        self.destination.setPlaceholderText("Destination")
-        self.destination.setMinimumHeight(36)
-        self._set_placeholder_color(self.destination)
-        form_layout.addWidget(self.destination)
-
+        self.destination.setPlaceholderText("🌍 Destination")
+        self.destination.setMinimumHeight(48)
+        form_row.addWidget(self.destination)
+        
+        # Departure date
         self.depart_date = QLineEdit()
-        self.depart_date.setPlaceholderText("Départ (YYYY-MM-DD)")
-        self.depart_date.setMinimumHeight(36)
-        self._set_placeholder_color(self.depart_date)
-        form_layout.addWidget(self.depart_date)
-
+        self.depart_date.setPlaceholderText("📅 Départ")
+        self.depart_date.setMinimumHeight(48)
+        form_row.addWidget(self.depart_date)
+        
+        # Return date
         self.return_date = QLineEdit()
-        self.return_date.setPlaceholderText("Retour (YYYY-MM-DD)")
-        self.return_date.setMinimumHeight(36)
-        self._set_placeholder_color(self.return_date)
-        form_layout.addWidget(self.return_date)
-
+        self.return_date.setPlaceholderText("📅 Retour")
+        self.return_date.setMinimumHeight(48)
+        form_row.addWidget(self.return_date)
+        
+        # Passengers
+        self.passengers = QComboBox()
+        self.passengers.addItems(["1 Pass.", "2 Pass.", "3 Pass.", "4 Pass.", "5+ Pass."])
+        self.passengers.setMinimumHeight(48)
+        form_row.addWidget(self.passengers)
+        
+        # Budget
         self.budget = QLineEdit()
-        self.budget.setPlaceholderText("Budget (€)")
-        self.budget.setMinimumHeight(36)
-        self.budget.setMaximumWidth(150)
-        self._set_placeholder_color(self.budget)
-        form_layout.addWidget(self.budget)
+        self.budget.setPlaceholderText("💰 Budget")
+        self.budget.setMinimumHeight(48)
+        form_row.addWidget(self.budget)
+        
+        search_layout.addLayout(form_row)
 
-        self.search_btn = QPushButton("Rechercher")
-        self.search_btn.setMinimumHeight(36)
-        self.search_btn.setMinimumWidth(120)
+        # Search button
+        self.search_btn = QPushButton("🔍 RECHERCHER DES VOLS")
+        self.search_btn.setMinimumHeight(52)
         self.search_btn.setCursor(Qt.PointingHandCursor)
-        form_layout.addWidget(self.search_btn)
+        search_layout.addWidget(self.search_btn)
 
-        layout.addLayout(form_layout)
+        main_layout.addWidget(search_frame)
 
-        # Status
+        # ============================================
+        # STATUS MESSAGE
+        # ============================================
         self.status = QLabel("")
-        self.status.setStyleSheet("color: #8b949e; font-size: 13px;")
-        layout.addWidget(self.status)
+        self.status.setStyleSheet("color: #0077b6; font-size: 14px; font-weight: 600;")
+        main_layout.addWidget(self.status)
 
-        # Results Table
+        # ============================================
+        # RESULTS TABLE
+        # ============================================
+        results_label = QLabel("Résultats de recherche")
+        results_label.setObjectName("sectionTitle")
+        results_label.setStyleSheet("color: #0077b6; font-size: 18px; font-weight: 700;")
+        main_layout.addWidget(results_label)
+
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels([
             "ID", "Compagnie", "Prix (€)", "Durée (min)", "Escales", "Score"
@@ -93,35 +155,33 @@ class SearchView(QWidget):
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         
         self.table.verticalHeader().setVisible(False)
-        layout.addWidget(self.table)
+        self.table.setMinimumHeight(300)
+        main_layout.addWidget(self.table)
 
-        # Actions
+        # ============================================
+        # ACTION BUTTONS
+        # ============================================
         actions = QHBoxLayout()
+        actions.setSpacing(15)
         
-        self.details_btn = QPushButton("Voir détails")
+        self.details_btn = QPushButton("📋 Voir détails")
         self.details_btn.setObjectName("secondary")
         self.details_btn.setEnabled(False)
-        self.details_btn.setMinimumHeight(38)
+        self.details_btn.setMinimumHeight(48)
         self.details_btn.setCursor(Qt.PointingHandCursor)
         actions.addWidget(self.details_btn)
 
-        self.book_btn = QPushButton("Réserver")
+        self.book_btn = QPushButton("✅ RÉSERVER CE VOL")
         self.book_btn.setEnabled(False)
-        self.book_btn.setMinimumHeight(38)
+        self.book_btn.setMinimumHeight(48)
         self.book_btn.setCursor(Qt.PointingHandCursor)
         actions.addWidget(self.book_btn)
 
         actions.addStretch()
-        layout.addLayout(actions)
+        main_layout.addLayout(actions)
 
         # Connect signals
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
-
-    def _set_placeholder_color(self, line_edit: QLineEdit):
-        """Set placeholder text color."""
-        palette = line_edit.palette()
-        palette.setColor(QPalette.PlaceholderText, QColor("#6e7781"))
-        line_edit.setPalette(palette)
 
     def _on_selection_changed(self):
         has_selection = len(self.table.selectedItems()) > 0
@@ -138,6 +198,10 @@ class SearchView(QWidget):
         QMessageBox.information(self, "Info", message)
 
     def set_offers(self, offers: list):
+        import json
+        with open("debug_offers.log", "w") as f:
+            f.write(json.dumps(offers, default=str, indent=2))
+
         self.table.setRowCount(0)
         for offer in offers:
             row = self.table.rowCount()
@@ -149,4 +213,4 @@ class SearchView(QWidget):
             self.table.setItem(row, 4, QTableWidgetItem(str(offer["stops"])))
             self.table.setItem(row, 5, QTableWidgetItem(str(offer["score"])))
         
-        self.set_status(f"{len(offers)} vol(s) trouvé(s)")
+        self.set_status(f"✨ {len(offers)} vol(s) trouvé(s)")

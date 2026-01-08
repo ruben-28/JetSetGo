@@ -1,6 +1,9 @@
 from services.session import SESSION
 from views.search_view import SearchView
 from presenters.search_presenter import SearchPresenter
+from PySide6.QtWidgets import QApplication
+import traceback
+
 
 class LoginPresenter:
     def __init__(self, view, api_client):
@@ -11,6 +14,7 @@ class LoginPresenter:
         self.view.reg_btn.clicked.connect(self.on_register)
 
     def on_login(self):
+        print("CLICK LOGIN")  # <-- DEBUG
         u = self.view.login_user.text().strip()
         p = self.view.login_pass.text()
 
@@ -19,21 +23,30 @@ class LoginPresenter:
             return
 
         self._set_loading(True)
+        QApplication.processEvents()
+
         try:
             data = self.api.login(u, p)
-            SESSION.set_auth(data["access_token"], data["user_id"], data["username"])
-            self.view.show_info(f"Connecté ✅ Bienvenue {SESSION.username}")
+            print("LOGIN RESPONSE:", data)
+
+            SESSION.set_auth(data["access_token"], None, None)
+            self.view.show_info("Connecté ✅")
+
             self.search_view = SearchView()
-            SearchPresenter(self.search_view, self.api)
+            self.search_presenter = SearchPresenter(self.search_view, self.api)
             self.search_view.show()
             self.view.close()
-            
+
         except Exception as e:
+            print("LOGIN ERROR:", repr(e))
+            traceback.print_exc()
             self.view.show_error(str(e))
+
         finally:
             self._set_loading(False)
 
     def on_register(self):
+        print("CLICK SIGNUP")  # <-- DEBUG
         username = self.view.reg_username.text().strip()
         email = self.view.reg_email.text().strip()
         password = self.view.reg_pass.text()
@@ -43,14 +56,21 @@ class LoginPresenter:
             return
 
         self._set_loading(True)
+        QApplication.processEvents()  # <-- IMPORTANT: force l’UI à se mettre à jour
+
         try:
             data = self.api.register(username, email, password)
-            SESSION.set_auth(data["access_token"], data["user_id"], data["username"])
-            self.view.show_info(f"Compte créé ✅ Bienvenue {SESSION.username}")
-            # Option : basculer sur l’onglet login
+            print("REGISTER RESPONSE:", data)  # <-- DEBUG
+
+            SESSION.set_auth(data["access_token"], None, None)
+            self.view.show_info("Compte créé ✅")
             self.view.tabs.setCurrentIndex(0)
+
         except Exception as e:
+            print("REGISTER ERROR:", repr(e))
+            traceback.print_exc()
             self.view.show_error(str(e))
+
         finally:
             self._set_loading(False)
 

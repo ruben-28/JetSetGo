@@ -1,0 +1,112 @@
+[
+  {
+    "id": "TEL-20260112-2",
+    "destination": "tel aviv",
+    "depart_date": "2026-01-12",
+    "return_date": "2026-02-12",
+    "airline": "Lufthansa",
+    "price": 2985,
+    "duration_min": 682,
+    "stops": 0,
+    "score": 3.9
+  },
+  {
+    "id": "TEL-20260112-1",
+    "destination": "tel aviv",
+    "depart_date": "2026-01-12",
+    "return_date": "2026-02-12",
+    "airline": "ElAl",
+    "price": 3085,
+    "duration_min": 370,
+    "stops": 0,
+    "score": 3.9
+  },
+  {
+    "id": "TEL-20260112-5",
+    "destination": "tel aviv",
+    "depart_date": "2026-01-12",
+    "return_date": "2026-02-12",
+    "airline": "Air France",
+    "price": 3120,
+    "duration_min": 529,
+    "stops": 0,
+    "score": 4.6
+  },
+  {
+    "id": "TEL-20260112-7",
+    "destination": "tel aviv",
+    "depart_date": "2026-01-12",
+    "return_date": "2026-02-12",
+    "airline": "ElAl",
+    "price": 3168,
+    "duration_min": 199,
+    "stops": 2,
+    "score": 3.6
+  },
+  {
+    "id": "TEL-20260112-4",
+    "destination": "tel aviv",
+    "depart_date": "2026-01-12",
+    "return_date": "2026-02-12",
+    "airline": "Air France",
+    "price": 3180,
+    "duration_min": 346,
+    "stops": 1,
+    "score": 4.4
+  },
+  {
+    "id": "TEL-20260112-6",
+    "destination": "tel aviv",
+    "depart_date": "2026-01-12",
+    "return_date": "2026-02-12",
+    "airline": "Ryanair",
+    "price": 3198,
+    "duration_min": 412,
+    "stops": 2,
+    "score": 3.6
+  },
+  {
+    "id": "TEL-20260112-9",
+    "destination": "tel aviv",
+    "depart_date": "2026-01-12",
+    "return_date": "2026-02-12",
+    "airline": "ElAl",
+    "price": 3204,
+    "duration_min": 653,
+    "stops": 1,
+    "score": 4.5
+  },
+  {
+    "id": "TEL-20260112-8",
+    "destination": "tel aviv",
+    "depart_date": "2026-01-12",
+    "return_date": "2026-02-12",
+    "airline": "ElAl",
+    "price": 3209,
+    "duration_min": 477,
+    "stops": 0,
+    "score": 3.6
+  },
+  {
+    "id": "TEL-20260112-3",
+    "destination": "tel aviv",
+    "depart_date": "2026-01-12",
+    "return_date": "2026-02-12",
+    "airline": "Turkish",
+    "price": 3213,
+    "duration_min": 340,
+    "stops": 0,
+    "score": 4.8
+  },
+  {
+    "id": "TEL-20260112-0",
+    "destination": "tel aviv",
+    "depart_date": "2026-01-12",
+    "return_date": "2026-02-12",
+    "airline": "Turkish",
+    "price": 3250,
+    "duration_min": 605,
+    "stops": 0,
+    "score": 3.8
+  }
+]

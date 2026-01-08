@@ -3,13 +3,19 @@ from PySide6.QtWidgets import (
     QPushButton, QMessageBox, QTabWidget
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPalette, QColor
-
+from PySide6.QtGui import QPalette, QColor, QIcon
+from pathlib import Path
 
 class LoginView(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("JetSetGo - Connexion")
+        # Force window icon
+        # desktop/app/views/login_view.py -> desktop/assets/logo.jpg
+        icon_path = Path(__file__).parent.parent.parent / "assets" / "logo.jpg"
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
+
         self.resize(1024, 768)  # Grande taille par défaut
 
         # Main layout
@@ -26,18 +32,38 @@ class LoginView(QWidget):
         layout.addWidget(container)
 
         # Header
-        logo = QLabel("✈")
-        logo.setStyleSheet("font-size: 64px;")  # Logo plus grand
+        # logo = QLabel("✈")
+        # logo.setStyleSheet("font-size: 64px;")
+        
+        logo = QLabel()
+        from PySide6.QtGui import QPixmap
+        import os
+        # desktop/app/views/login_view.py
+        # base (views) -> app -> desktop -> assets
+        base_dir = Path(__file__).parent.parent.parent
+        logo_path = base_dir / "assets" / "logo.jpg"
+        pixmap = QPixmap(str(logo_path))
+        
+        # Resize nicely (e.g. height 100)
+        if not pixmap.isNull():
+            pixmap = pixmap.scaledToHeight(120, Qt.SmoothTransformation)
+            logo.setPixmap(pixmap)
+        else:
+            logo.setText("✈ (img not found)")
+            logo.setStyleSheet("font-size: 64px;")
+
         logo.setAlignment(Qt.AlignCenter)
         container_layout.addWidget(logo)
 
         title = QLabel('JetSet<span style="color: #ff6b35;">Go</span>')
         title.setObjectName("title")
+        title.setStyleSheet("font-size: 32px; font-weight: 800; color: #24292f;")
         title.setAlignment(Qt.AlignCenter)
         container_layout.addWidget(title)
 
         subtitle = QLabel("Trouvez les meilleurs vols au meilleur prix")
         subtitle.setObjectName("subtitle")
+        subtitle.setStyleSheet("color: #24292f; font-size: 14px; font-weight: 500;")
         subtitle.setAlignment(Qt.AlignCenter)
         container_layout.addWidget(subtitle)
 
@@ -112,7 +138,7 @@ class LoginView(QWidget):
         # Footer
         container_layout.addSpacing(10)
         footer = QLabel("© 2026 JetSetGo")
-        footer.setStyleSheet("color: #6e7681; font-size: 12px;")
+        footer.setStyleSheet("color: #24292f; font-size: 12px;")
         footer.setAlignment(Qt.AlignCenter)
         container_layout.addWidget(footer)
 

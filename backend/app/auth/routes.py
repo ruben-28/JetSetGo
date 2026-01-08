@@ -1,69 +1,65 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
-from .db import SessionLocal
-from .models import User
-from .security import hash_password, verify_password, create_access_token
+from app.auth.db import get_db
+from app.auth.models import User
+from app.auth.security import hash_password, verify_password, create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# --------- DB Dependency ----------
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
-# --------- Schemas ----------
 class RegisterIn(BaseModel):
     username: str
     email: EmailStr
     password: str
 
+
 class LoginIn(BaseModel):
     username_or_email: str
     password: str
 
-class AuthOut(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user_id: int
-    username: str
 
-# --------- Helpers ----------
-def find_user_by_username_or_email(db: Session, s: str):
-    return db.query(User).filter(
-        (User.username == s) | (User.email == s)
-    ).first()
-
-# --------- Endpoints ----------
-@router.post("/register", response_model=AuthOut)
+@router.post("/register")
 def register(data: RegisterIn, db: Session = Depends(get_db)):
+    # Vérifie doublons (plus clair que laisser exploser SQLite)
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(status_code=400, detail="Username déjà utilisé")
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
 
-    user = User(
-        username=data.username,
-        email=data.email,
-        password_hash=hash_password(data.password),
-    )
+    # Hash password (peut lever ValueError si > 72 bytes)
+    try:
+        pw_hash = hash_password(data.password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    user = User(username=data.username, email=data.email, password_hash=pw_hash)
     db.add(user)
-    db.commit()
-    db.refresh(user)
 
-    token = create_access_token(user.id, user.username)
-    return AuthOut(access_token=token, user_id=user.id, username=user.username)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Username/Email déjà utilisé")
 
-@router.post("/login", response_model=AuthOut)
+    token = create_access_token({"sub": str(user.id)})
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@router.post("/login")
 def login(data: LoginIn, db: Session = Depends(get_db)):
-    user = find_user_by_username_or_email(db, data.username_or_email)
-    if not user or not verify_password(data.password, user.password_hash):
+    user = (
+        db.query(User)
+        .filter((User.username == data.username_or_email) | (User.email == data.username_or_email))
+        .first()
+    )
+    if not user:
         raise HTTPException(status_code=401, detail="Identifiants invalides")
 
+    if not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Identifiants invalides")
 
-    token = create_access_token(user.id, user.username)
-    return AuthOut(access_token=token, user_id=user.id, username=user.username)
+    token = create_access_token({"sub": str(user.id)})
+    return {"access_token": token, "token_type": "bearer"}
