@@ -4,8 +4,9 @@ import traceback
 
 def test_search():
     try:
-        # Params matching the screenshot ID "PAR-20271205-..."
+        # Test avec ville de départ et destination
         params = {
+            "departure": "Tel Aviv",
             "destination": "Paris", 
             "depart_date": "2027-12-05",
             "return_date": "2027-12-12"
@@ -17,7 +18,7 @@ def test_search():
         if r.status_code == 200:
             data = r.json()
             print(f"Received {len(data)} offers.")
-            for i, offer in enumerate(data):
+            for i, offer in enumerate(data[:3]):  # Show first 3 offers
                 print(f"Offer {i}: {offer}")
         else:
             print(f"Error: {r.text}")

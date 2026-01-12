@@ -14,7 +14,8 @@ class LoginPresenter:
         self.view.reg_btn.clicked.connect(self.on_register)
 
     def on_login(self):
-        print("CLICK LOGIN")  # <-- DEBUG
+        """Handle login button click - now async"""
+        print("CLICK LOGIN")
         u = self.view.login_user.text().strip()
         p = self.view.login_pass.text()
 
@@ -23,30 +24,43 @@ class LoginPresenter:
             return
 
         self._set_loading(True)
-        QApplication.processEvents()
 
-        try:
-            data = self.api.login(u, p)
-            print("LOGIN RESPONSE:", data)
+        # Call async API (won't freeze UI!)
+        self.api.login_async(
+            u, p,
+            on_success=self._on_login_success,
+            on_error=self._on_login_error
+        )
 
-            SESSION.set_auth(data["access_token"], None, None)
-            self.view.show_info("Connecté ✅")
+    def _on_login_success(self, data):
+        """Callback when login succeeds"""
+        print("LOGIN RESPONSE:", data)
+        
+        # Store token and set it in API client
+        token = data["access_token"]
+        SESSION.set_auth(token, None, None)
+        self.api.set_token(token)  # ✅ Now sends token in future requests!
+        
+        self.view.show_info("Connecté ✅")
 
-            self.search_view = SearchView()
-            self.search_presenter = SearchPresenter(self.search_view, self.api)
-            self.search_view.show()
-            self.view.close()
+        # Open search view
+        self.search_view = SearchView()
+        self.search_presenter = SearchPresenter(self.search_view, self.api)
+        self.search_view.show()
+        self.view.close()
+        
+        self._set_loading(False)
 
-        except Exception as e:
-            print("LOGIN ERROR:", repr(e))
-            traceback.print_exc()
-            self.view.show_error(str(e))
-
-        finally:
-            self._set_loading(False)
+    def _on_login_error(self, error):
+        """Callback when login fails"""
+        print("LOGIN ERROR:", repr(error))
+        traceback.print_exc()
+        self.view.show_error(str(error))
+        self._set_loading(False)
 
     def on_register(self):
-        print("CLICK SIGNUP")  # <-- DEBUG
+        """Handle register button click - now async"""
+        print("CLICK SIGNUP")
         username = self.view.reg_username.text().strip()
         email = self.view.reg_email.text().strip()
         password = self.view.reg_pass.text()
@@ -56,26 +70,38 @@ class LoginPresenter:
             return
 
         self._set_loading(True)
-        QApplication.processEvents()  # <-- IMPORTANT: force l’UI à se mettre à jour
 
-        try:
-            data = self.api.register(username, email, password)
-            print("REGISTER RESPONSE:", data)  # <-- DEBUG
+        # Call async API
+        self.api.register_async(
+            username, email, password,
+            on_success=self._on_register_success,
+            on_error=self._on_register_error
+        )
 
-            SESSION.set_auth(data["access_token"], None, None)
-            self.view.show_info("Compte créé ✅")
-            self.view.tabs.setCurrentIndex(0)
+    def _on_register_success(self, data):
+        """Callback when register succeeds"""
+        print("REGISTER RESPONSE:", data)
+        
+        # Store token and set it in API client
+        token = data["access_token"]
+        SESSION.set_auth(token, None, None)
+        self.api.set_token(token)  # ✅ Now sends token in future requests!
+        
+        self.view.show_info("Compte créé ✅")
+        self.view.tabs.setCurrentIndex(0)
+        self._set_loading(False)
 
-        except Exception as e:
-            print("REGISTER ERROR:", repr(e))
-            traceback.print_exc()
-            self.view.show_error(str(e))
-
-        finally:
-            self._set_loading(False)
+    def _on_register_error(self, error):
+        """Callback when register fails"""
+        print("REGISTER ERROR:", repr(error))
+        traceback.print_exc()
+        self.view.show_error(str(error))
+        self._set_loading(False)
 
     def _set_loading(self, loading: bool):
+        """Update UI loading state"""
         self.view.login_btn.setDisabled(loading)
         self.view.reg_btn.setDisabled(loading)
-        self.view.login_btn.setText("Connexion..." if loading else "Se connecter")
-        self.view.reg_btn.setText("Création..." if loading else "Créer un compte")
+        self.view.login_btn.setText("⏳ Connexion..." if loading else "Se connecter")
+        self.view.reg_btn.setText("⏳ Création..." if loading else "Créer un compte")
+

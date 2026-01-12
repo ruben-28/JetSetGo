@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from PySide6.QtWidgets import QApplication
 
-from services.api_client import ApiClient
+from services.async_api_client import AsyncApiClient  # ✅ Now async!
 from views.login_view import LoginView
 from presenters.login_presenter import LoginPresenter
 
@@ -30,7 +30,8 @@ def main():
     if stylesheet:
         app.setStyleSheet(stylesheet)
 
-    api = ApiClient(base_url="http://127.0.0.1:8000")
+    # ✅ Use async API client (won't freeze UI!)
+    api = AsyncApiClient(base_url="http://127.0.0.1:8000")
     login_view = LoginView()
     presenter = LoginPresenter(login_view, api)
 

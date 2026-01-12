@@ -23,12 +23,14 @@ class ApiClient:
 
     def search_travel(
         self,
+        departure: str,
         destination: str,
         depart_date: str,
         return_date: str,
         budget: Optional[int] = None
     ) -> list:
         params = {
+            "departure": departure,
             "destination": destination,
             "depart_date": depart_date,
             "return_date": return_date,

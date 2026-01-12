@@ -1,12 +1,24 @@
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from jose import jwt
+import os
 
 PWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-JWT_SECRET = "CHANGE_ME_SUPER_SECRET"
+# SECURITY: Load JWT secret from environment variable
+# Generate a secure secret: python -c "import secrets; print(secrets.token_urlsafe(32))"
+JWT_SECRET = os.getenv("JWT_SECRET", "CHANGE_ME_SUPER_SECRET")
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_MINUTES = 60 * 24
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))  # 24h by default
+
+# Warn if using default secret
+if JWT_SECRET == "CHANGE_ME_SUPER_SECRET":
+    import warnings
+    warnings.warn(
+        "⚠️  Using default JWT_SECRET! Set JWT_SECRET environment variable in production.",
+        RuntimeWarning
+    )
+
 
 
 def _bcrypt_ok(password: str) -> bool:
