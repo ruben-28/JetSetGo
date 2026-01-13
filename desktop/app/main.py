@@ -35,7 +35,7 @@ def main():
     login_view = LoginView()
     presenter = LoginPresenter(login_view, api)
 
-    login_view.show()
+    login_view.showMaximized()  # Open fullscreen
     sys.exit(app.exec())
 
 if __name__ == "__main__":

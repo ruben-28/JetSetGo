@@ -3,10 +3,12 @@ from views.search_view import SearchView
 from presenters.search_presenter import SearchPresenter
 from PySide6.QtWidgets import QApplication
 import traceback
+from PySide6.QtCore import QObject
 
 
-class LoginPresenter:
+class LoginPresenter(QObject):
     def __init__(self, view, api_client):
+        super().__init__()
         self.view = view
         self.api = api_client
 
@@ -46,7 +48,7 @@ class LoginPresenter:
         # Open search view
         self.search_view = SearchView()
         self.search_presenter = SearchPresenter(self.search_view, self.api)
-        self.search_view.show()
+        self.search_view.showMaximized()  # Open fullscreen
         self.view.close()
         
         self._set_loading(False)

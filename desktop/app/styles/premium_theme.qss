@@ -123,15 +123,19 @@ QPushButton:pressed {
 }
 
 QPushButton:disabled {
-    background: rgba(100, 100, 100, 0.3);
-    color: #6e7781;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #9ca3af, stop:1 #a8b0ba);
+    border: 2px solid #6b7280;
+    border-radius: 10px;
+    color: #ffffff;
+    font-weight: 600;
 }
 
 /* Secondary Button (Blue - Ghost) */
 QPushButton#secondary {
     background: transparent;
     border: 2px solid rgba(0, 153, 255, 0.5);
-    color: #00d4ff;
+    color: #0077b6; /* Constant blue */
 }
 
 QPushButton#secondary:hover {
@@ -144,8 +148,10 @@ QPushButton#secondary:pressed {
 }
 
 QPushButton#secondary:disabled {
-    border-color: rgba(100, 100, 100, 0.3);
-    color: #6e7781;
+    border: 2px solid #6b7280;
+    color: #6b7280;
+    background: rgba(107, 114, 128, 0.1);
+    border-radius: 10px;
 }
 
 /* Icon Button */
@@ -185,7 +191,9 @@ QTableWidget::item:selected {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
         stop:0 rgba(0, 153, 255, 0.3),
         stop:1 rgba(0, 212, 255, 0.2));
-    color: #ffffff;
+    color: #1a365d;
+    text-decoration: none;
+    font-weight: 600;
 }
 
 QTableWidget::item:hover {
@@ -202,10 +210,17 @@ QHeaderView::section {
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 1px;
+    text-decoration: none;
 }
 
 QHeaderView::section:hover {
     background: rgba(0, 212, 255, 0.15);
+    text-decoration: none;
+}
+
+QHeaderView::section:checked {
+    background: rgba(0, 153, 255, 0.2);
+    text-decoration: none;
 }
 
 /* ============================================
@@ -350,4 +365,68 @@ QToolTip {
     color: #e8edf3;
     padding: 6px 10px;
     font-size: 13px;
+}
+
+/* ============================================
+   DATE EDIT
+   ============================================ */
+
+QDateEdit {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #0077b6;
+    border-radius: 10px;
+    padding: 10px 35px 10px 16px;
+    color: #24292f;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+QDateEdit:hover {
+    border: 2px solid #00d4ff;
+    background: rgba(255, 255, 255, 1);
+}
+
+QDateEdit:focus {
+    border: 2px solid #00d4ff;
+}
+
+QDateEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border-left: 1px solid #0077b6;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    background: rgba(0, 119, 182, 0.1);
+}
+
+QDateEdit::down-arrow {
+    image: none;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #0077b6;
+}
+
+QCalendarWidget {
+    background: #ffffff;
+    border-radius: 8px;
+}
+
+QCalendarWidget QToolButton {
+    color: #0077b6;
+    background: transparent;
+    border: none;
+    font-weight: 600;
+}
+
+QCalendarWidget QMenu {
+    background: #ffffff;
+    color: #24292f;
+}
+
+QCalendarWidget QSpinBox {
+    background: #ffffff;
+    color: #24292f;
+    border: 1px solid #0077b6;
+    border-radius: 4px;
 }

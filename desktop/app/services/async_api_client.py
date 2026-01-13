@@ -8,17 +8,32 @@ from typing import Optional
 from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool
 
 
+class ApiTaskSignals(QObject):
+    """
+    Signals for ApiTask to communicate with main thread.
+    Qt signals are thread-safe and automatically queued to the main thread.
+    """
+    finished = Signal(object)  # Emits result data
+    error = Signal(Exception)  # Emits exception
+
+
 class ApiTask(QRunnable):
     """
     Runnable task for async API calls.
     Executes in background thread to prevent UI freezing.
+    Uses signals for thread-safe callbacks.
     """
     
     def __init__(self, func, callback, error_callback):
         super().__init__()
         self.func = func
-        self.callback = callback
-        self.error_callback = error_callback
+        self.signals = ApiTaskSignals()
+        
+        # Connect signals to callbacks
+        if callback:
+            self.signals.finished.connect(callback)
+        if error_callback:
+            self.signals.error.connect(error_callback)
     
     def run(self):
         """Execute the async function in background thread"""
@@ -30,13 +45,11 @@ class ApiTask(QRunnable):
             result = loop.run_until_complete(self.func())
             loop.close()
             
-            # Call success callback
-            if self.callback:
-                self.callback(result)
+            # Emit result via signal (thread-safe!)
+            self.signals.finished.emit(result)
         except Exception as e:
-            # Call error callback
-            if self.error_callback:
-                self.error_callback(e)
+            # Emit error via signal (thread-safe!)
+            self.signals.error.emit(e)
 
 
 class AsyncApiClient(QObject):

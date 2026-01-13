@@ -5,7 +5,7 @@ Defines all domain events that capture state changes in the system.
 
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Literal
 import uuid
 
 
@@ -37,7 +37,7 @@ class FlightBookedEvent(BaseEvent):
     at the time it was created. It serves as the source of truth
     for reconstructing the booking state.
     """
-    event_type: str = Field(default="FlightBooked", const=True)
+    event_type: Literal["FlightBooked"] = "FlightBooked"
     
     # Additional typed fields for better validation
     user_id: Optional[int] = None
@@ -76,7 +76,7 @@ class BookingCancelledEvent(BaseEvent):
     
     Future implementation - prepared for when cancellation feature is added.
     """
-    event_type: str = Field(default="BookingCancelled", const=True)
+    event_type: Literal["BookingCancelled"] = "BookingCancelled"
     
     booking_id: str
     cancellation_reason: Optional[str] = None

@@ -78,26 +78,40 @@ class SearchView(QWidget):
         
         # Departure
         self.departure = QLineEdit()
-        self.departure.setPlaceholderText("✈️ Départ")
+        self.departure.setPlaceholderText("Départ")
         self.departure.setMinimumHeight(48)
         form_row.addWidget(self.departure)
         
         # Destination
         self.destination = QLineEdit()
-        self.destination.setPlaceholderText("🌍 Destination")
+        self.destination.setPlaceholderText("Destination")
         self.destination.setMinimumHeight(48)
         form_row.addWidget(self.destination)
         
-        # Departure date
-        self.depart_date = QLineEdit()
-        self.depart_date.setPlaceholderText("📅 Départ")
+        # Departure date - Calendar picker with label
+        depart_date_label = QLabel("📅 Départ:")
+        depart_date_label.setStyleSheet("color: #0077b6; font-weight: 600; font-size: 12px;")
+        form_row.addWidget(depart_date_label)
+        
+        self.depart_date = QDateEdit()
+        self.depart_date.setCalendarPopup(True)
+        self.depart_date.setDate(QDate.currentDate().addDays(7))  # Default to 1 week from now
+        self.depart_date.setDisplayFormat("yyyy-MM-dd")
         self.depart_date.setMinimumHeight(48)
+        self.depart_date.setMinimumWidth(130)
         form_row.addWidget(self.depart_date)
         
-        # Return date
-        self.return_date = QLineEdit()
-        self.return_date.setPlaceholderText("📅 Retour")
+        # Return date - Calendar picker with label
+        return_date_label = QLabel("📅 Retour:")
+        return_date_label.setStyleSheet("color: #0077b6; font-weight: 600; font-size: 12px;")
+        form_row.addWidget(return_date_label)
+        
+        self.return_date = QDateEdit()
+        self.return_date.setCalendarPopup(True)
+        self.return_date.setDate(QDate.currentDate().addDays(14))  # Default to 2 weeks from now
+        self.return_date.setDisplayFormat("yyyy-MM-dd")
         self.return_date.setMinimumHeight(48)
+        self.return_date.setMinimumWidth(130)
         form_row.addWidget(self.return_date)
         
         # Passengers
@@ -108,14 +122,14 @@ class SearchView(QWidget):
         
         # Budget
         self.budget = QLineEdit()
-        self.budget.setPlaceholderText("💰 Budget")
+        self.budget.setPlaceholderText("Budget")
         self.budget.setMinimumHeight(48)
         form_row.addWidget(self.budget)
         
         search_layout.addLayout(form_row)
 
         # Search button
-        self.search_btn = QPushButton("🔍 RECHERCHER DES VOLS")
+        self.search_btn = QPushButton("RECHERCHER DES VOLS")
         self.search_btn.setMinimumHeight(52)
         self.search_btn.setCursor(Qt.PointingHandCursor)
         search_layout.addWidget(self.search_btn)
@@ -155,36 +169,65 @@ class SearchView(QWidget):
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         
         self.table.verticalHeader().setVisible(False)
-        self.table.setMinimumHeight(300)
+        self.table.setMinimumHeight(200)
+        self.table.setMaximumHeight(400)  # Limit height to ensure buttons are visible
+        
+        # Configure header font to prevent strikethrough
+        from PySide6.QtGui import QFont
+        header_font = self.table.horizontalHeader().font()
+        header_font.setStrikeOut(False)
+        header_font.setUnderline(False)
+        self.table.horizontalHeader().setFont(header_font)
+        
+        # Configure table font
+        table_font = self.table.font()
+        table_font.setStrikeOut(False)
+        table_font.setUnderline(False)
+        self.table.setFont(table_font)
+        
         main_layout.addWidget(self.table)
 
         # ============================================
         # ACTION BUTTONS
         # ============================================
-        actions = QHBoxLayout()
-        actions.setSpacing(15)
+        actions_frame = QFrame()
+        actions_frame.setObjectName("actionsPanel")
+        actions_frame.setStyleSheet("""
+            QFrame#actionsPanel {
+                background: rgba(200, 205, 211, 0.5);
+                border-radius: 12px;
+                padding: 10px;
+            }
+        """)
+        actions_frame.setFixedHeight(75)  # Fixed height to ensure visibility
+        actions_layout = QHBoxLayout(actions_frame)
+        actions_layout.setContentsMargins(15, 10, 15, 10)
+        actions_layout.setSpacing(15)
         
-        self.details_btn = QPushButton("📋 Voir détails")
+        self.details_btn = QPushButton("🔍 Voir détails")
         self.details_btn.setObjectName("secondary")
         self.details_btn.setEnabled(False)
-        self.details_btn.setMinimumHeight(48)
+        self.details_btn.setMinimumHeight(52)
+        self.details_btn.setMinimumWidth(180)
         self.details_btn.setCursor(Qt.PointingHandCursor)
-        actions.addWidget(self.details_btn)
+        actions_layout.addWidget(self.details_btn)
 
-        self.book_btn = QPushButton("✅ RÉSERVER CE VOL")
+        self.book_btn = QPushButton("✈️ RÉSERVER CE VOL")
         self.book_btn.setEnabled(False)
-        self.book_btn.setMinimumHeight(48)
+        self.book_btn.setMinimumHeight(52)
+        self.book_btn.setMinimumWidth(220)
         self.book_btn.setCursor(Qt.PointingHandCursor)
-        actions.addWidget(self.book_btn)
+        actions_layout.addWidget(self.book_btn)
 
-        actions.addStretch()
-        main_layout.addLayout(actions)
+        actions_layout.addStretch()
+        main_layout.addWidget(actions_frame)
 
         # Connect signals
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
 
     def _on_selection_changed(self):
-        has_selection = len(self.table.selectedItems()) > 0
+        count = len(self.table.selectedItems())
+        has_selection = count > 0
         self.details_btn.setEnabled(has_selection)
         self.book_btn.setEnabled(has_selection)
 
@@ -199,18 +242,33 @@ class SearchView(QWidget):
 
     def set_offers(self, offers: list):
         import json
-        with open("debug_offers.log", "w") as f:
-            f.write(json.dumps(offers, default=str, indent=2))
-
+        # Disable sorting while updating to prevent index issues
+        self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
+        
         for offer in offers:
             row = self.table.rowCount()
             self.table.insertRow(row)
-            self.table.setItem(row, 0, QTableWidgetItem(offer["id"]))
-            self.table.setItem(row, 1, QTableWidgetItem(offer["airline"]))
-            self.table.setItem(row, 2, QTableWidgetItem(str(offer["price"])))
-            self.table.setItem(row, 3, QTableWidgetItem(str(offer["duration_min"])))
-            self.table.setItem(row, 4, QTableWidgetItem(str(offer["stops"])))
-            self.table.setItem(row, 5, QTableWidgetItem(str(offer["score"])))
+            
+            # Helper to create items with consistent styling
+            def create_item(text):
+                item = QTableWidgetItem(str(text))
+                item.setForeground(QColor("#24292f"))  # Dark grey text
+                item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+                # Ensure no strikethrough
+                font = item.font()
+                font.setStrikeOut(False)
+                item.setFont(font)
+                return item
+            
+            self.table.setItem(row, 0, create_item(offer.get("id", "")))
+            self.table.setItem(row, 1, create_item(offer.get("airline", "")))
+            self.table.setItem(row, 2, create_item(f"{offer.get('price', 0)} €"))
+            self.table.setItem(row, 3, create_item(f"{offer.get('duration_min', 0)} min"))
+            self.table.setItem(row, 4, create_item(offer.get("stops", 0)))
+            self.table.setItem(row, 5, create_item(offer.get("score", 0.0)))
+
+        # Re-enable sorting
+        self.table.setSortingEnabled(True)
         
         self.set_status(f"✨ {len(offers)} vol(s) trouvé(s)")

@@ -97,6 +97,10 @@ class LoginView(QWidget):
         self.login_btn.setCursor(Qt.PointingHandCursor)
         login_layout.addWidget(self.login_btn)
 
+        # Connect Enter key to login button
+        self.login_user.returnPressed.connect(self.login_btn.click)
+        self.login_pass.returnPressed.connect(self.login_btn.click)
+
         login_layout.addStretch()
 
         # Register Tab
