@@ -28,12 +28,14 @@ class ApiTask(QRunnable):
         super().__init__()
         self.func = func
         self.signals = ApiTaskSignals()
+        self.setAutoDelete(False)  # Prevent deletion before signal delivery
         
-        # Connect signals to callbacks
+        # Connect signals to callbacks with QueuedConnection for thread safety
+        from PySide6.QtCore import Qt
         if callback:
-            self.signals.finished.connect(callback)
+            self.signals.finished.connect(callback, Qt.QueuedConnection)
         if error_callback:
-            self.signals.error.connect(error_callback)
+            self.signals.error.connect(error_callback, Qt.QueuedConnection)
     
     def run(self):
         """Execute the async function in background thread"""
@@ -147,6 +149,36 @@ class AsyncApiClient(QObject):
                 return self._handle_response(response)
         
         task = ApiTask(_details, on_success, on_error)
+        self.thread_pool.start(task)
+
+    def book_flight_async(self, booking_data: dict, on_success, on_error):
+        """Book a flight (async, non-blocking)"""
+        async def _book():
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.base_url}/travel/book",
+                    json=booking_data,
+                    headers=self._get_headers(),
+                    timeout=15.0
+                )
+                return self._handle_response(response)
+        
+        task = ApiTask(_book, on_success, on_error)
+        self.thread_pool.start(task)
+
+    def get_my_bookings_async(self, user_id: int, on_success, on_error):
+        """Get user's booking history (async, non-blocking)"""
+        async def _get_bookings():
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.base_url}/travel/my-bookings",
+                    params={"user_id": user_id},
+                    headers=self._get_headers(),
+                    timeout=15.0
+                )
+                return self._handle_response(response)
+        
+        task = ApiTask(_get_bookings, on_success, on_error)
         self.thread_pool.start(task)
     
     # ========================================================================

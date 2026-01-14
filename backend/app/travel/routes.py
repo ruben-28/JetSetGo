@@ -198,3 +198,45 @@ async def book_flight(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Booking failed: {str(e)}")
+
+
+# ============================================================================
+# User Bookings Endpoint (Read Model Query)
+# ============================================================================
+
+class UserBookingOut(BaseModel):
+    """User booking response model"""
+    id: str
+    offer_id: str
+    departure: str
+    destination: str
+    depart_date: str
+    return_date: Optional[str]
+    price: float
+    adults: int
+    status: str
+    created_at: Optional[str]
+
+
+@router.get("/my-bookings", response_model=List[UserBookingOut])
+async def get_my_bookings(
+    user_id: int = Query(..., description="User ID to fetch bookings for"),
+    queries: FlightQueries = Depends(get_flight_queries)
+):
+    """
+    Get all bookings for the current user (QUERY - Read operation from Read Model).
+    
+    Query Parameters:
+    - user_id: User ID (from JWT token in real implementation)
+    
+    Returns:
+    - List of user's bookings ordered by creation date (newest first)
+    """
+    try:
+        bookings = await queries.get_user_bookings(user_id)
+        return bookings
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get bookings: {str(e)}")
+

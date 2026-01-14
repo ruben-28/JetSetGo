@@ -51,6 +51,13 @@ class SearchView(QWidget):
         hotels_btn.setMinimumHeight(40)
         header.addWidget(hotels_btn)
         
+        # History button - Mes Voyages
+        self.history_btn = QPushButton("🧳 Mes Voyages")
+        self.history_btn.setObjectName("iconButton")
+        self.history_btn.setMinimumHeight(40)
+        self.history_btn.setCursor(Qt.PointingHandCursor)
+        header.addWidget(self.history_btn)
+        
         profile_btn = QPushButton("Profile")
         profile_btn.setObjectName("iconButton")
         profile_btn.setMinimumHeight(40)
@@ -172,6 +179,11 @@ class SearchView(QWidget):
         self.table.setMinimumHeight(200)
         self.table.setMaximumHeight(400)  # Limit height to ensure buttons are visible
         
+        # Disable gridlines to prevent white line artifact
+        self.table.setShowGrid(False)
+        # Disable focus rectangle
+        self.table.setFocusPolicy(Qt.NoFocus)
+        
         # Configure header font to prevent strikethrough
         from PySide6.QtGui import QFont
         header_font = self.table.horizontalHeader().font()
@@ -255,6 +267,8 @@ class SearchView(QWidget):
                 item = QTableWidgetItem(str(text))
                 item.setForeground(QColor("#24292f"))  # Dark grey text
                 item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+                # Make item read-only to stabilize selection rendering
+                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 # Ensure no strikethrough
                 font = item.font()
                 font.setStrikeOut(False)
@@ -272,3 +286,27 @@ class SearchView(QWidget):
         self.table.setSortingEnabled(True)
         
         self.set_status(f"✨ {len(offers)} vol(s) trouvé(s)")
+
+    def get_selected_flight_data(self):
+        """Get data from the currently selected flight row."""
+        selection_model = self.table.selectionModel()
+        current_index = selection_model.currentIndex()
+        row = current_index.row()
+        
+        if row < 0:
+            return None
+        
+        # Get items from each column
+        id_item = self.table.item(row, 0)
+        airline_item = self.table.item(row, 1)
+        price_item = self.table.item(row, 2)
+        
+        if not id_item:
+            return None
+        
+        return {
+            "id": id_item.text(),
+            "airline": airline_item.text() if airline_item else "",
+            "price": price_item.text() if price_item else "0"
+        }
+

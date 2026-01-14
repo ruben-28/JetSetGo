@@ -290,41 +290,77 @@ class BookingCommands:
         event: FlightBookedEvent
     ) -> Dict:
         """
-        Create booking record in database (apply state change).
+        Create booking record in database (apply state change to Read Model).
         
-        Note: In a full CQRS/ES architecture, this would be handled by
-        a separate projection/event handler that listens to events.
-        For now, we apply the state change directly after saving the event.
+        IMPORTANT: This method is called AFTER the event has been persisted
+        to the Event Store, ensuring the event is the source of truth.
         
         Args:
-            booking_id: Unique booking identifier
+            booking_id: Unique booking identifier (aggregate ID)
             command: Original booking command
-            event: Persisted booking event
+            event: Persisted booking event (already saved to Event Store)
         
         Returns:
             Created booking record
         """
-        # TODO: Implement actual database persistence
-        # For now, we'll just return a confirmation
-        # In a full implementation, this would insert into a bookings table
+        from app.auth.db import SessionLocal
+        from app.auth.models import Booking
         
-        booking_record = {
-            "id": booking_id,
-            "user_id": command.user_id,
-            "offer_id": command.offer_id,
-            "departure": command.departure,
-            "destination": command.destination,
-            "depart_date": command.depart_date,
-            "return_date": command.return_date,
-            "price": command.price,
-            "adults": command.adults,
-            "status": "confirmed",
-            "created_at": event.timestamp,
-            "event_id": event.event_id
-        }
-        
-        # TODO: Save to database
-        # db.add(Booking(**booking_record))
-        # db.commit()
-        
-        return booking_record
+        session = SessionLocal()
+        try:
+            # Create Booking entity for Read Model
+            booking = Booking(
+                id=booking_id,
+                user_id=command.user_id,
+                offer_id=command.offer_id,
+                departure=command.departure,
+                destination=command.destination,
+                depart_date=command.depart_date,
+                return_date=command.return_date,
+                price=command.price,
+                adults=command.adults,
+                status="confirmed",
+                event_id=event.event_id
+            )
+            
+            session.add(booking)
+            session.commit()
+            session.refresh(booking)
+            
+            return {
+                "id": booking.id,
+                "user_id": booking.user_id,
+                "offer_id": booking.offer_id,
+                "departure": booking.departure,
+                "destination": booking.destination,
+                "depart_date": booking.depart_date,
+                "return_date": booking.return_date,
+                "price": booking.price,
+                "adults": booking.adults,
+                "status": booking.status,
+                "created_at": booking.created_at,
+                "event_id": booking.event_id
+            }
+            
+        except Exception as e:
+            session.rollback()
+            # Log the error but don't fail the booking
+            # The event is already persisted, so the booking is technically valid
+            print(f"[WARNING] Failed to persist booking to read model: {e}")
+            return {
+                "id": booking_id,
+                "user_id": command.user_id,
+                "offer_id": command.offer_id,
+                "departure": command.departure,
+                "destination": command.destination,
+                "depart_date": command.depart_date,
+                "return_date": command.return_date,
+                "price": command.price,
+                "adults": command.adults,
+                "status": "confirmed",
+                "created_at": event.timestamp,
+                "event_id": event.event_id
+            }
+        finally:
+            session.close()
+

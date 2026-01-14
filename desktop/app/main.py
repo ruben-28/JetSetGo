@@ -1,43 +1,20 @@
 import sys
-from pathlib import Path
 from PySide6.QtWidgets import QApplication
-
-from services.async_api_client import AsyncApiClient  # ✅ Now async!
-from views.login_view import LoginView
-from presenters.login_presenter import LoginPresenter
-
-
-def load_stylesheet():
-    """Load the premium theme stylesheet."""
-    style_path = Path(__file__).parent / "styles" / "premium_theme.qss"
-    if style_path.exists():
-        with open(style_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return ""
-
-
+from navigation_manager import NavigationManager
 from PySide6.QtGui import QIcon
+from pathlib import Path
 
 def main():
     app = QApplication(sys.argv)
     
-    # Set app icon
-    # desktop/app/main.py -> desktop/assets/logo.jpg
+    # Set app icon globally
     app.setWindowIcon(QIcon(str(Path(__file__).parent.parent / "assets" / "logo.jpg")))
-    
-    # Apply premium theme
-    stylesheet = load_stylesheet()
-    if stylesheet:
-        app.setStyleSheet(stylesheet)
 
-    # ✅ Use async API client (won't freeze UI!)
-    api = AsyncApiClient(base_url="http://127.0.0.1:8000")
-    login_view = LoginView()
-    presenter = LoginPresenter(login_view, api)
+    # Launch via NavigationManager
+    nav_manager = NavigationManager()
+    nav_manager.start()
 
-    login_view.showMaximized()  # Open fullscreen
     sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()
-

@@ -1,12 +1,14 @@
 from services.session import SESSION
-from views.search_view import SearchView
-from presenters.search_presenter import SearchPresenter
+# Decoupled: No more SearchView/SearchPresenter imports
 from PySide6.QtWidgets import QApplication
 import traceback
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QObject, Signal
 
 
 class LoginPresenter(QObject):
+    # Signal emitted when login is successful, passing user data dict
+    login_successful = Signal(dict)
+
     def __init__(self, view, api_client):
         super().__init__()
         self.view = view
@@ -40,18 +42,38 @@ class LoginPresenter(QObject):
         
         # Store token and set it in API client
         token = data["access_token"]
-        SESSION.set_auth(token, None, None)
-        self.api.set_token(token)  # ✅ Now sends token in future requests!
+        
+        # Decode JWT to get user_id from 'sub' claim
+        user_id = self._decode_user_id_from_token(token)
+        username = self.view.login_user.text().strip()
+        
+        SESSION.set_auth(token, user_id, username)
+        self.api.set_token(token)
         
         self.view.show_info("Connecté ✅")
-
-        # Open search view
-        self.search_view = SearchView()
-        self.search_presenter = SearchPresenter(self.search_view, self.api)
-        self.search_view.showMaximized()  # Open fullscreen
-        self.view.close()
+        
+        # Emit signal instead of manually opening new windows
+        self.login_successful.emit(data)
         
         self._set_loading(False)
+
+    def _decode_user_id_from_token(self, token: str) -> int:
+        """Decode user_id from JWT token's 'sub' claim."""
+        import base64
+        import json
+        try:
+            # JWT format: header.payload.signature
+            payload = token.split('.')[1]
+            # Add padding if needed
+            padding = 4 - len(payload) % 4
+            if padding != 4:
+                payload += '=' * padding
+            decoded = base64.urlsafe_b64decode(payload)
+            data = json.loads(decoded)
+            return int(data.get('sub', 0))
+        except Exception as e:
+            print(f"[WARNING] Failed to decode user_id from token: {e}")
+            return None
 
     def _on_login_error(self, error):
         """Callback when login fails"""
@@ -86,10 +108,19 @@ class LoginPresenter(QObject):
         
         # Store token and set it in API client
         token = data["access_token"]
-        SESSION.set_auth(token, None, None)
-        self.api.set_token(token)  # ✅ Now sends token in future requests!
+        
+        # Decode JWT to get user_id from 'sub' claim
+        user_id = self._decode_user_id_from_token(token)
+        username = self.view.reg_username.text().strip()
+        
+        SESSION.set_auth(token, user_id, username)
+        self.api.set_token(token)
         
         self.view.show_info("Compte créé ✅")
+        
+        # NOTE: Registration usually implies login, or asks to login. 
+        # For now, let's keep it on the login tab or we could auto-login.
+        # The original code just switched tabs. We kept that behavior but we could emit success if we wanted auto-login.
         self.view.tabs.setCurrentIndex(0)
         self._set_loading(False)
 
@@ -106,4 +137,3 @@ class LoginPresenter(QObject):
         self.view.reg_btn.setDisabled(loading)
         self.view.login_btn.setText("⏳ Connexion..." if loading else "Se connecter")
         self.view.reg_btn.setText("⏳ Création..." if loading else "Créer un compte")
-

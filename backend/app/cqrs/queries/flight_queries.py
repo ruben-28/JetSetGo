@@ -193,3 +193,48 @@ class FlightQueries:
     def _sort_by_price(self, offers: List[Dict]) -> List[Dict]:
         """Sort offers by price (ascending)"""
         return sorted(offers, key=lambda x: x["price"])
+    
+    # ========================================================================
+    # User Bookings Query (Read Model)
+    # ========================================================================
+    
+    async def get_user_bookings(self, user_id: int) -> List[Dict]:
+        """
+        Get all bookings for a specific user (READ operation from Read Model).
+        
+        Args:
+            user_id: User ID to fetch bookings for
+        
+        Returns:
+            List of booking records for the user
+        """
+        from app.auth.db import SessionLocal
+        from app.auth.models import Booking
+        
+        session = SessionLocal()
+        try:
+            bookings = (
+                session.query(Booking)
+                .filter(Booking.user_id == user_id)
+                .order_by(Booking.created_at.desc())
+                .all()
+            )
+            
+            return [
+                {
+                    "id": b.id,
+                    "offer_id": b.offer_id,
+                    "departure": b.departure,
+                    "destination": b.destination,
+                    "depart_date": b.depart_date,
+                    "return_date": b.return_date,
+                    "price": b.price,
+                    "adults": b.adults,
+                    "status": b.status,
+                    "created_at": b.created_at.isoformat() if b.created_at else None
+                }
+                for b in bookings
+            ]
+        finally:
+            session.close()
+

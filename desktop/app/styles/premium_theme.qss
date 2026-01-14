@@ -184,7 +184,9 @@ QTableWidget {
 QTableWidget::item {
     padding: 12px;
     color: #24292f;
-    border-bottom: 1px solid rgba(100, 100, 100, 0.1);
+    border: none;
+    border-bottom: none;
+    outline: none;
 }
 
 QTableWidget::item:selected {
@@ -194,6 +196,22 @@ QTableWidget::item:selected {
     color: #1a365d;
     text-decoration: none;
     font-weight: 600;
+    border: none;
+    border-top: none;
+    border-bottom: none;
+    outline: none;
+}
+
+QTableWidget::item:focus {
+    border: none;
+    border-bottom: none;
+    outline: none;
+}
+
+QTableWidget::item:selected:focus {
+    border: none;
+    border-bottom: none;
+    outline: none;
 }
 
 QTableWidget::item:hover {
