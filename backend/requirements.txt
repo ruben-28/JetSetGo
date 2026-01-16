@@ -6,4 +6,5 @@ pydantic
 sqlalchemy
 httpx
 python-dotenv
+pyodbc
 

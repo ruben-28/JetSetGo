@@ -3,7 +3,8 @@ Event Store Implementation
 Handles persistence and retrieval of domain events for Event Sourcing.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, create_engine
+from sqlalchemy import Column, Integer, String, DateTime, create_engine
+from sqlalchemy.dialects.mssql import NVARCHAR
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -35,7 +36,7 @@ class EventModel(Base):
     aggregate_id = Column(String(36), nullable=False, index=True)
     event_type = Column(String(100), nullable=False, index=True)
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
-    data = Column(Text, nullable=False)  # JSON serialized event data
+    data = Column(NVARCHAR(None), nullable=False)  # JSON serialized event data (NVARCHAR(MAX) Unicode)
     version = Column(Integer, nullable=False, default=1)
 
 
@@ -54,20 +55,21 @@ class EventStore:
     - Ensure events are immutable once stored
     """
     
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self):
         """
-        Initialize Event Store with database connection.
+        Initialize Event Store with SQL Server connection.
         
-        Args:
-            db_path: Path to SQLite database file. If None, uses default path.
+        Uses centralized DATABASE_URL from app.db.config.
+        Both auth and event store share the same cloud database.
         """
-        if db_path is None:
-            # Use same directory as auth database
-            backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            db_path = os.path.join(backend_dir, "jetsetgo_events.db")
+        from app.db.config import DATABASE_URL
         
-        self.db_path = db_path
-        self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
+        self.engine = create_engine(
+            DATABASE_URL,
+            echo=False,  # Set to True for debugging
+            pool_pre_ping=True,  # Verify connections before using them
+            pool_recycle=3600,  # Recycle connections after 1 hour
+        )
         self.SessionLocal = sessionmaker(bind=self.engine)
         
         # Create tables if they don't exist
