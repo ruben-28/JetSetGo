@@ -58,6 +58,13 @@ class SearchView(QWidget):
         self.history_btn.setCursor(Qt.PointingHandCursor)
         header.addWidget(self.history_btn)
         
+        # AI Assistant button
+        self.ai_btn = QPushButton("🤖 Assistant IA")
+        self.ai_btn.setObjectName("iconButton")
+        self.ai_btn.setMinimumHeight(40)
+        self.ai_btn.setCursor(Qt.PointingHandCursor)
+        header.addWidget(self.ai_btn)
+        
         profile_btn = QPushButton("Profile")
         profile_btn.setObjectName("iconButton")
         profile_btn.setMinimumHeight(40)

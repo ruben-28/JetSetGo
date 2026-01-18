@@ -10,10 +10,15 @@ def main():
     # Set app icon globally
     app.setWindowIcon(QIcon(str(Path(__file__).parent.parent / "assets" / "logo.jpg")))
 
-    # Launch via NavigationManager
-    nav_manager = NavigationManager()
-    nav_manager.start()
-
+    # Create navigation manager
+    nav = NavigationManager()
+    
+    # Connect cleanup on app quit
+    app.aboutToQuit.connect(nav.cleanup)
+    
+    # Start app
+    nav.start()
+    
     sys.exit(app.exec())
 
 if __name__ == "__main__":

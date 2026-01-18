@@ -12,10 +12,14 @@ from .base_gateway import (
 )
 from .travel_provider import TravelGateway
 from .hf_gateway import HFGateway
+from .llm_provider import LLMProvider
+from .ollama_gateway import OllamaGateway
+from .openai_provider import OpenAIProvider
 
 __all__ = [
     # Base classes
     "BaseGateway",
+    "LLMProvider",
     
     # Exceptions
     "GatewayError",
@@ -26,4 +30,7 @@ __all__ = [
     # Gateway implementations
     "TravelGateway",
     "HFGateway",
+    "OllamaGateway",
+    "OpenAIProvider",
 ]
+

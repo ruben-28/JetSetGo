@@ -65,10 +65,23 @@ class AsyncApiClient(QObject):
         self.base_url = base_url.rstrip("/")
         self.thread_pool = QThreadPool()
         self.token = None  # Will be set after login
+        self._http_client: Optional[httpx.AsyncClient] = None  # Persistent client
     
     def set_token(self, token: str):
         """Set authentication token"""
         self.token = token
+    
+    async def _get_http_client(self) -> httpx.AsyncClient:
+        """Get or create persistent HTTP client (lazy init)"""
+        if self._http_client is None or self._http_client.is_closed:
+            self._http_client = httpx.AsyncClient(timeout=httpx.Timeout(35.0))
+        return self._http_client
+    
+    async def close(self):
+        """Close HTTP client - call on app shutdown"""
+        if self._http_client and not self._http_client.is_closed:
+            await self._http_client.aclose()
+            self._http_client = None
     
     def _get_headers(self) -> dict:
         """Get headers with authentication if token is set"""
@@ -179,6 +192,37 @@ class AsyncApiClient(QObject):
                 return self._handle_response(response)
         
         task = ApiTask(_get_bookings, on_success, on_error)
+        self.thread_pool.start(task)
+    
+    def consult_ai_async(self, mode: str, message: str, context: dict,
+                         on_success, on_error):
+        """
+        Consult AI assistant (async, non-blocking).
+        Uses persistent HTTP client for better performance.
+        
+        Args:
+            mode: Consultation mode (compare, budget, policy, free)
+            message: User's message/question
+            context: Context dict (should contain OfferDTO/BookingDTO dicts)
+            on_success: Callback for successful response
+            on_error: Callback for errors
+        """
+        async def _consult():
+            client = await self._get_http_client()  # Persistent client
+            response = await client.post(
+                f"{self.base_url}/api/ai/consult",
+                json={
+                    "mode": mode,
+                    "message": message,
+                    "context": context,  # Already formatted as ConsultContext dict
+                    "language": "fr",
+                    "stream": False
+                },
+                headers=self._get_headers()
+            )
+            return self._handle_response(response)
+        
+        task = ApiTask(_consult, on_success, on_error)
         self.thread_pool.start(task)
     
     # ========================================================================
