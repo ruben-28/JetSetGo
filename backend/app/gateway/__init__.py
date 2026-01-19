@@ -10,7 +10,7 @@ from .base_gateway import (
     GatewayTimeoutError,
     GatewayAPIError
 )
-from .travel_provider import TravelGateway
+from .travel_provider import TravelProvider
 from .hf_gateway import HFGateway
 from .llm_provider import LLMProvider
 from .ollama_gateway import OllamaGateway

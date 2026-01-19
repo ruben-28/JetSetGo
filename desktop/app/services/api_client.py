@@ -62,3 +62,34 @@ class ApiClient:
             msg = data.get("detail", "Erreur API")
             raise RuntimeError(msg)
         return data
+
+    def get_packages(
+        self,
+        departure: str,
+        destination: str,
+        depart_date: str,
+        return_date: Optional[str] = None
+    ) -> list:
+        params = {
+            "departure": departure,
+            "destination": destination,
+            "depart_date": depart_date,
+        }
+        if return_date:
+            params["return_date"] = return_date
+
+        r = requests.get(
+            f"{self.base_url}/travel/packages",
+            params=params,
+            timeout=20,
+        )
+        return self._handle(r)
+
+    def get_hotels(self, city_code: str) -> list:
+        params = {"city_code": city_code}
+        r = requests.get(
+            f"{self.base_url}/travel/hotels",
+            params=params,
+            timeout=15,
+        )
+        return self._handle(r)

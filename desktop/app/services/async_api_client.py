@@ -164,6 +164,47 @@ class AsyncApiClient(QObject):
         task = ApiTask(_details, on_success, on_error)
         self.thread_pool.start(task)
 
+    def get_packages_async(self, departure: str, destination: str, 
+                          depart_date: str, return_date: Optional[str],
+                          on_success, on_error):
+        """Get packages (async, non-blocking)"""
+        async def _get_packages():
+            params = {
+                "departure": departure,
+                "destination": destination,
+                "depart_date": depart_date,
+            }
+            if return_date:
+                params["return_date"] = return_date
+                
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.base_url}/travel/packages",
+                    params=params,
+                    headers=self._get_headers(),
+                    timeout=20.0
+                )
+                return self._handle_response(response)
+        
+        task = ApiTask(_get_packages, on_success, on_error)
+        self.thread_pool.start(task)
+
+    def get_hotels_async(self, city_code: str, on_success, on_error):
+        """Get hotels (async, non-blocking)"""
+        async def _get_hotels():
+            params = {"city_code": city_code}
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.base_url}/travel/hotels",
+                    params=params,
+                    headers=self._get_headers(),
+                    timeout=15.0
+                )
+                return self._handle_response(response)
+        
+        task = ApiTask(_get_hotels, on_success, on_error)
+        self.thread_pool.start(task)
+
     def book_flight_async(self, booking_data: dict, on_success, on_error):
         """Book a flight (async, non-blocking)"""
         async def _book():

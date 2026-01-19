@@ -11,7 +11,8 @@ from fastapi import APIRouter, Query, Depends, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
-from app.gateway import TravelGateway
+from app.gateway import TravelProvider
+from app.services.travel_service import TravelService
 from app.cqrs import FlightQueries, BookingCommands
 from app.cqrs.commands.booking_commands import BookFlightCommand
 
@@ -34,7 +35,7 @@ async def get_flight_queries():
     Creates gateway and query handler instances with proper cleanup.
     Used for all READ operations.
     """
-    async with TravelGateway() as gateway:
+    async with TravelProvider() as gateway:
         yield FlightQueries(gateway)
 
 
@@ -239,4 +240,40 @@ async def get_my_bookings(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get bookings: {str(e)}")
+
+
+# ============================================================================
+# New Endpoints for Packages and Hotels
+# ============================================================================
+
+@router.get("/packages")
+async def search_packages(
+    departure: str = Query(..., min_length=2, description="Departure city/airport"),
+    destination: str = Query(..., min_length=2, description="Destination city/airport"),
+    depart_date: str = Query(..., description="Departure date (YYYY-MM-DD)"),
+    return_date: Optional[str] = Query(None, description="Return date (YYYY-MM-DD)")
+):
+    """
+    Search for combined flight + hotel packages.
+    """
+    try:
+        # Note: In a full CQRS refactor, this should be moved to a Query Handler
+        service = TravelService()
+        return await service.search_packages(departure, destination, depart_date)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Package search failed: {str(e)}")
+
+
+@router.get("/hotels")
+async def search_hotels(
+    city_code: str = Query(..., min_length=3, description="City IATA code or name")
+):
+    """
+    Search for hotels in a specific city.
+    """
+    try:
+        service = TravelService()
+        return await service.search_hotels(city_code)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Hotel search failed: {str(e)}")
 

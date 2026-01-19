@@ -10,7 +10,7 @@ from typing import List, Dict, Optional
 from datetime import datetime
 from fastapi import HTTPException
 
-from app.gateway import TravelGateway
+from app.gateway import TravelProvider
 
 
 class FlightQueries:
@@ -27,12 +27,12 @@ class FlightQueries:
     This class focuses purely on data retrieval and query optimization.
     """
     
-    def __init__(self, gateway: TravelGateway):
+    def __init__(self, gateway: TravelProvider):
         """
         Initialize query handler with gateway dependency.
         
         Args:
-            gateway: TravelGateway instance for external API calls
+            gateway: TravelProvider instance for external API calls
         """
         self.gateway = gateway
     
@@ -110,10 +110,10 @@ class FlightQueries:
             HTTPException: On validation errors
         """
         # 1. Validate offer_id
-        if not offer_id or len(offer_id) < 5:
+        if not offer_id or not offer_id.strip():
             raise HTTPException(
                 status_code=400,
-                detail="Invalid offer_id format"
+                detail="Invalid offer_id: must be a non-empty string"
             )
         
         # 2. Fetch details from gateway
