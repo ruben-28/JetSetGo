@@ -14,7 +14,8 @@ from typing import List, Optional
 from app.gateway import TravelProvider
 from app.services.travel_service import TravelService
 from app.cqrs import FlightQueries, BookingCommands
-from app.cqrs.commands.booking_commands import BookFlightCommand
+from app.cqrs import FlightQueries, BookingCommands
+from app.cqrs.commands.booking_commands import BookFlightCommand, BookHotelCommand, BookPackageCommand
 
 
 # ============================================================================
@@ -84,15 +85,22 @@ class BookingOut(BaseModel):
     booking_id: str
     event_id: str
     status: str
-    offer_id: str
-    departure: str
-    destination: str
-    depart_date: str
-    return_date: Optional[str]
     price: float
     adults: int
     created_at: str
     message: str
+    
+    # Optional fields for different types
+    offer_id: Optional[str] = None
+    departure: Optional[str] = None
+    destination: Optional[str] = None
+    depart_date: Optional[str] = None
+    return_date: Optional[str] = None
+    
+    hotel_name: Optional[str] = None
+    hotel_city: Optional[str] = None
+    check_in: Optional[str] = None
+    check_out: Optional[str] = None
 
 
 # ============================================================================
@@ -201,6 +209,48 @@ async def book_flight(
         raise HTTPException(status_code=500, detail=f"Booking failed: {str(e)}")
 
 
+@router.post("/book/hotel", response_model=BookingOut)
+async def book_hotel(
+    command: BookHotelCommand,
+    commands: BookingCommands = Depends(get_booking_commands)
+):
+    """
+    Book a hotel (COMMAND - Write operation).
+    """
+    try:
+        result = await commands.book_hotel(command)
+        # Adapt result for generic BookingOut which expects flight fields
+        # Ideally BookingOut should be generic too, but for speed we construct it or make it permissive
+        # The frontend will need to handle this.
+        # Let's assume BookingOut is loose or we return a dict that matches Pydantic constraints
+        # Actually BookingOut in this file is Flight specific.
+        # I need to update BookingOut or define HotelBookingOut. 
+        # But for 'response_model=BookingOut', it expects specific fields.
+        # I will update BookingOut in a separate chunk to be generic as well.
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Hotel booking failed: {str(e)}")
+
+
+@router.post("/book/package", response_model=BookingOut)
+async def book_package(
+    command: BookPackageCommand,
+    commands: BookingCommands = Depends(get_booking_commands)
+):
+    """
+    Book a package (COMMAND - Write operation).
+    """
+    try:
+        result = await commands.book_package(command)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Package booking failed: {str(e)}")
+
+
 # ============================================================================
 # User Bookings Endpoint (Read Model Query)
 # ============================================================================
@@ -208,15 +258,25 @@ async def book_flight(
 class UserBookingOut(BaseModel):
     """User booking response model"""
     id: str
-    offer_id: str
-    departure: str
-    destination: str
-    depart_date: str
-    return_date: Optional[str]
+    booking_type: str
     price: float
     adults: int
     status: str
     created_at: Optional[str]
+    event_id: str
+    
+    # Flight fields
+    offer_id: Optional[str] = None
+    departure: Optional[str] = None
+    destination: Optional[str] = None
+    depart_date: Optional[str] = None
+    return_date: Optional[str] = None
+    
+    # Hotel/Package fields
+    hotel_name: Optional[str] = None
+    hotel_city: Optional[str] = None
+    check_in: Optional[str] = None
+    check_out: Optional[str] = None
 
 
 @router.get("/my-bookings", response_model=List[UserBookingOut])

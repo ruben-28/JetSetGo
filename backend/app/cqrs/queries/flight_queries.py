@@ -209,7 +209,7 @@ class FlightQueries:
             List of booking records for the user
         """
         from app.auth.db import SessionLocal
-        from app.auth.models import Booking
+        from app.auth.models import Booking, BookingType
         
         session = SessionLocal()
         try:
@@ -220,21 +220,50 @@ class FlightQueries:
                 .all()
             )
             
-            return [
-                {
+            results = []
+            for b in bookings:
+                booking_dict = {
                     "id": b.id,
-                    "offer_id": b.offer_id,
-                    "departure": b.departure,
-                    "destination": b.destination,
-                    "depart_date": b.depart_date,
-                    "return_date": b.return_date,
+                    "booking_type": b.booking_type.value if hasattr(b.booking_type, 'value') else b.booking_type,
                     "price": b.price,
                     "adults": b.adults,
                     "status": b.status,
-                    "created_at": b.created_at.isoformat() if b.created_at else None
+                    "created_at": b.created_at.isoformat() if b.created_at else None,
+                    "event_id": b.event_id
                 }
-                for b in bookings
-            ]
+                
+                # Polymorphic fields
+                if b.booking_type == BookingType.FLIGHT or b.booking_type == "FLIGHT":
+                    booking_dict.update({
+                        "offer_id": b.offer_id,
+                        "departure": b.departure,
+                        "destination": b.destination,
+                        "depart_date": b.depart_date,
+                        "return_date": b.return_date,
+                    })
+                elif b.booking_type == BookingType.HOTEL or b.booking_type == "HOTEL":
+                    booking_dict.update({
+                        "hotel_name": b.hotel_name,
+                        "hotel_city": b.hotel_city,
+                        "check_in": b.check_in,
+                        "check_out": b.check_out,
+                    })
+                elif b.booking_type == BookingType.PACKAGE or b.booking_type == "PACKAGE":
+                    booking_dict.update({
+                        "offer_id": b.offer_id,
+                        "departure": b.departure,
+                        "destination": b.destination,
+                        "depart_date": b.depart_date,
+                        "return_date": b.return_date,
+                        "hotel_name": b.hotel_name,
+                        "hotel_city": b.hotel_city,
+                        "check_in": b.check_in,
+                        "check_out": b.check_out,
+                    })
+                
+                results.append(booking_dict)
+                
+            return results
         finally:
             session.close()
 

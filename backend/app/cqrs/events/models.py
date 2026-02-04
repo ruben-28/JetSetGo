@@ -70,6 +70,72 @@ class FlightBookedEvent(BaseEvent):
             }
 
 
+class HotelBookedEvent(BaseEvent):
+    """
+    Event raised when a hotel is successfully booked.
+    """
+    event_type: Literal["HotelBooked"] = "HotelBooked"
+    
+    user_id: Optional[int] = None
+    hotel_name: str
+    hotel_city: str
+    check_in: str
+    check_out: str
+    price: float
+    adults: int = 1
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        if not self.data:
+            self.data = {
+                "user_id": self.user_id,
+                "hotel_name": self.hotel_name,
+                "hotel_city": self.hotel_city,
+                "check_in": self.check_in,
+                "check_out": self.check_out,
+                "price": self.price,
+                "adults": self.adults
+            }
+
+
+class PackageBookedEvent(BaseEvent):
+    """
+    Event raised when a package (Flight + Hotel) is successfully booked.
+    """
+    event_type: Literal["PackageBooked"] = "PackageBooked"
+    
+    user_id: Optional[int] = None
+    offer_id: str
+    departure: str
+    destination: str
+    depart_date: str
+    return_date: Optional[str] = None
+    hotel_name: str
+    hotel_city: str
+    check_in: str
+    check_out: str
+    price: float
+    adults: int = 1
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        if not self.data:
+            self.data = {
+                "user_id": self.user_id,
+                "offer_id": self.offer_id,
+                "departure": self.departure,
+                "destination": self.destination,
+                "depart_date": self.depart_date,
+                "return_date": self.return_date,
+                "hotel_name": self.hotel_name,
+                "hotel_city": self.hotel_city,
+                "check_in": self.check_in,
+                "check_out": self.check_out,
+                "price": self.price,
+                "adults": self.adults
+            }
+
+
 class BookingCancelledEvent(BaseEvent):
     """
     Event raised when a booking is cancelled.

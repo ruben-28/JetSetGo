@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field, validator
 import uuid
 
 from app.db.event_store import get_event_store
-from app.cqrs.events.models import FlightBookedEvent, BookingCancelledEvent
+from app.cqrs.events.models import FlightBookedEvent, HotelBookedEvent, PackageBookedEvent, BookingCancelledEvent
 
 
 # ============================================================================
@@ -64,7 +64,69 @@ class CancelBookingCommand(BaseModel):
     """
     booking_id: str = Field(..., description="Booking ID to cancel")
     user_id: Optional[int] = None
+
     cancellation_reason: Optional[str] = None
+
+
+class BookHotelCommand(BaseModel):
+    """
+    Command to book a hotel.
+    """
+    hotel_name: str = Field(..., min_length=2, description="Name of the hotel")
+    hotel_city: str = Field(..., min_length=2, description="City of the hotel")
+    check_in: str = Field(..., description="Check-in date (YYYY-MM-DD)")
+    check_out: str = Field(..., description="Check-out date (YYYY-MM-DD)")
+    price: float = Field(..., gt=0, description="Booking price")
+    adults: int = Field(default=1, ge=1, le=9, description="Number of adults")
+    
+    # Optional user information
+    user_id: Optional[int] = None
+    user_email: Optional[str] = None
+    user_name: Optional[str] = None
+    
+    payment_method: Optional[str] = Field(default="credit_card")
+    
+    @validator('check_in', 'check_out')
+    def validate_date_format(cls, v):
+        if v:
+            try:
+                datetime.strptime(v, "%Y-%m-%d")
+            except ValueError:
+                raise ValueError("Date must be in YYYY-MM-DD format")
+        return v
+
+
+class BookPackageCommand(BaseModel):
+    """
+    Command to book a package (Flight + Hotel).
+    """
+    offer_id: str = Field(..., min_length=5, description="Unique offer identifier for flight")
+    departure: str = Field(..., min_length=2, description="Departure city/airport")
+    destination: str = Field(..., min_length=2, description="Destination city/airport")
+    depart_date: str = Field(..., description="Departure/Check-in date (YYYY-MM-DD)")
+    return_date: Optional[str] = Field(None, description="Return/Check-out date (YYYY-MM-DD)")
+    
+    hotel_name: str = Field(..., min_length=2, description="Name of the hotel")
+    hotel_city: str = Field(..., min_length=2, description="City of the hotel")
+    
+    price: float = Field(..., gt=0, description="Booking price")
+    adults: int = Field(default=1, ge=1, le=9, description="Number of adults")
+    
+    # Optional user information
+    user_id: Optional[int] = None
+    user_email: Optional[str] = None
+    user_name: Optional[str] = None
+    
+    payment_method: Optional[str] = Field(default="credit_card")
+    
+    @validator('depart_date', 'return_date')
+    def validate_date_format(cls, v):
+        if v:
+            try:
+                datetime.strptime(v, "%Y-%m-%d")
+            except ValueError:
+                raise ValueError("Date must be in YYYY-MM-DD format")
+        return v
 
 
 # ============================================================================
@@ -170,7 +232,7 @@ class BookingCommands:
         # 5. Apply state change (create booking in read model)
         # Note: In a full Event Sourcing implementation, this would be handled
         # by a separate event handler/projection. For now, we do it directly.
-        booking = await self._create_booking_record(booking_id, command, event)
+        booking = await self._create_booking_record(booking_id, event)
         
         # 6. Return confirmation
         return {
@@ -227,6 +289,123 @@ class BookingCommands:
             "status": "cancelled",
             "message": "Booking cancelled successfully"
         }
+
+    async def book_hotel(self, command: BookHotelCommand) -> Dict:
+        """
+        Book a hotel (WRITE operation with Event Sourcing).
+        """
+        # 1. Validate
+        self._validate_hotel_command(command)
+        
+        # 2. Generate ID
+        booking_id = str(uuid.uuid4())
+        
+        # 3. Create Event
+        event = HotelBookedEvent(
+            aggregate_id=booking_id,
+            user_id=command.user_id,
+            hotel_name=command.hotel_name,
+            hotel_city=command.hotel_city,
+            check_in=command.check_in,
+            check_out=command.check_out,
+            price=command.price,
+            adults=command.adults,
+            data={
+                "booking_id": booking_id,
+                "user_id": command.user_id,
+                "user_email": command.user_email,
+                "user_name": command.user_name,
+                "hotel_name": command.hotel_name,
+                "hotel_city": command.hotel_city,
+                "check_in": command.check_in,
+                "check_out": command.check_out,
+                "price": command.price,
+                "adults": command.adults,
+                "payment_method": command.payment_method,
+                "status": "confirmed",
+                "created_at": datetime.utcnow().isoformat()
+            }
+        )
+        
+        # 4. Save Event FIRST
+        await self.event_store.append(event)
+        
+        # 5. Apply State Change
+        await self._create_booking_record(booking_id, event)
+        
+        return {
+            "booking_id": booking_id,
+            "event_id": event.event_id,
+            "status": "confirmed",
+            "hotel_name": command.hotel_name,
+            "hotel_city": command.hotel_city,
+            "check_in": command.check_in,
+            "check_out": command.check_out,
+            "price": command.price,
+            "adults": command.adults,
+            "created_at": event.timestamp.isoformat(),
+            "message": "Hotel booked successfully"
+        }
+
+    async def book_package(self, command: BookPackageCommand) -> Dict:
+        """
+        Book a package (WRITE operation with Event Sourcing).
+        """
+        # 1. Validate
+        self._validate_package_command(command)
+        
+        # 2. Generate ID
+        booking_id = str(uuid.uuid4())
+        
+        # 3. Create Event
+        event = PackageBookedEvent(
+            aggregate_id=booking_id,
+            user_id=command.user_id,
+            offer_id=command.offer_id,
+            departure=command.departure,
+            destination=command.destination,
+            depart_date=command.depart_date,
+            return_date=command.return_date,
+            hotel_name=command.hotel_name,
+            hotel_city=command.hotel_city,
+            check_in=command.depart_date,  # Use depart_date as check_in
+            check_out=command.return_date if command.return_date else command.depart_date, # Use return_date as check_out
+            price=command.price,
+            adults=command.adults,
+            data={
+                "booking_id": booking_id,
+                "user_id": command.user_id,
+                "offer_id": command.offer_id,
+                "departure": command.departure,
+                "destination": command.destination,
+                "depart_date": command.depart_date,
+                "return_date": command.return_date,
+                "hotel_name": command.hotel_name,
+                "hotel_city": command.hotel_city,
+                "price": command.price,
+                "adults": command.adults,
+                "payment_method": command.payment_method,
+                "status": "confirmed",
+                "created_at": datetime.utcnow().isoformat()
+            }
+        )
+        
+        # 4. Save Event FIRST
+        await self.event_store.append(event)
+        
+        # 5. Apply State Change
+        await self._create_booking_record(booking_id, event)
+        
+        return {
+            "booking_id": booking_id,
+            "event_id": event.event_id,
+            "status": "confirmed",
+            "offer_id": command.offer_id,
+            "hotel_name": command.hotel_name,
+            "price": command.price,
+            "created_at": event.timestamp.isoformat(),
+            "message": "Package booked successfully"
+        }
     
     # ========================================================================
     # Validation Logic (Command Side)
@@ -278,6 +457,31 @@ class BookingCommands:
                 status_code=400,
                 detail="Price must be positive"
             )
+
+    def _validate_hotel_command(self, command: BookHotelCommand):
+        try:
+            check_in = datetime.strptime(command.check_in, "%Y-%m-%d")
+            check_out = datetime.strptime(command.check_out, "%Y-%m-%d")
+        except ValueError:
+             raise HTTPException(status_code=400, detail="Invalid date")
+             
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        if check_in < today:
+             raise HTTPException(status_code=400, detail="Check-in must be in future")
+        
+        if check_out <= check_in:
+             raise HTTPException(status_code=400, detail="Check-out must be after check-in")
+             
+    def _validate_package_command(self, command: BookPackageCommand):
+        # Similar reuse of logic
+        try:
+            dep = datetime.strptime(command.depart_date, "%Y-%m-%d")
+        except ValueError:
+             raise HTTPException(status_code=400, detail="Invalid date")
+        
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        if dep < today:
+             raise HTTPException(status_code=400, detail="Departure in past")
     
     # ========================================================================
     # State Application (Write Model)
@@ -286,42 +490,58 @@ class BookingCommands:
     async def _create_booking_record(
         self, 
         booking_id: str, 
-        command: BookFlightCommand,
-        event: FlightBookedEvent
+        event: BaseModel # Can be any of the *BookedEvent types
     ) -> Dict:
         """
         Create booking record in database (apply state change to Read Model).
-        
-        IMPORTANT: This method is called AFTER the event has been persisted
-        to the Event Store, ensuring the event is the source of truth.
-        
-        Args:
-            booking_id: Unique booking identifier (aggregate ID)
-            command: Original booking command
-            event: Persisted booking event (already saved to Event Store)
-        
-        Returns:
-            Created booking record
         """
         from app.auth.db import SessionLocal
-        from app.auth.models import Booking
+        from app.auth.models import Booking, BookingType
         
         session = SessionLocal()
         try:
-            # Create Booking entity for Read Model
-            booking = Booking(
-                id=booking_id,
-                user_id=command.user_id,
-                offer_id=command.offer_id,
-                departure=command.departure,
-                destination=command.destination,
-                depart_date=command.depart_date,
-                return_date=command.return_date,
-                price=command.price,
-                adults=command.adults,
-                status="confirmed",
-                event_id=event.event_id
-            )
+            booking_data = {
+                "id": booking_id,
+                "user_id": event.user_id,
+                "price": event.price,
+                "adults": event.adults,
+                "status": "confirmed",
+                "event_id": event.event_id,
+            }
+
+            # Determine type and populate specific fields
+            if event.event_type == "FlightBooked":
+                booking_data.update({
+                    "booking_type": BookingType.FLIGHT,
+                    "offer_id": event.offer_id,
+                    "departure": event.departure,
+                    "destination": event.destination,
+                    "depart_date": event.depart_date,
+                    "return_date": event.return_date,
+                })
+            elif event.event_type == "HotelBooked":
+                booking_data.update({
+                    "booking_type": BookingType.HOTEL,
+                    "hotel_name": event.hotel_name,
+                    "hotel_city": event.hotel_city,
+                    "check_in": event.check_in,
+                    "check_out": event.check_out,
+                })
+            elif event.event_type == "PackageBooked":
+                booking_data.update({
+                    "booking_type": BookingType.PACKAGE,
+                    "offer_id": event.offer_id,
+                    "departure": event.departure,
+                    "destination": event.destination,
+                    "depart_date": event.depart_date,
+                    "return_date": event.return_date,
+                    "hotel_name": event.hotel_name,
+                    "hotel_city": event.hotel_city,
+                    "check_in": event.check_in,
+                    "check_out": event.check_out,
+                })
+
+            booking = Booking(**booking_data)
             
             session.add(booking)
             session.commit()
@@ -330,6 +550,8 @@ class BookingCommands:
             return {
                 "id": booking.id,
                 "user_id": booking.user_id,
+                "booking_type": booking.booking_type,
+                "price": booking.price,
                 "offer_id": booking.offer_id,
                 "departure": booking.departure,
                 "destination": booking.destination,
