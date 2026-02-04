@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate, Signal
 from PySide6.QtGui import QColor, QIcon
 from pathlib import Path
+from views.city_autocomplete import CityAutocompleteLineEdit
 
 
 class HotelsView(QWidget):
@@ -18,8 +19,9 @@ class HotelsView(QWidget):
     history_requested = Signal()
     assistant_requested = Signal()
     
-    def __init__(self):
+    def __init__(self, api_client=None):
         super().__init__()
+        self.api = api_client  # Store API client for autocomplete
         self.setWindowTitle("JetSetGo - Hôtels")
         
         # Try to set window icon
@@ -99,9 +101,14 @@ class HotelsView(QWidget):
         form_row = QHBoxLayout()
         form_row.setSpacing(12)
         
-        # Destination/City
-        self.destination = QLineEdit()
-        self.destination.setPlaceholderText("Ville / Destination")
+        # Destination/City with Autocomplete
+        if self.api:
+            self.destination = CityAutocompleteLineEdit(self.api)
+            self.destination.setPlaceholderText("Ville / Destination (ex: Paris, LON, NYC)")
+        else:
+            # Fallback to regular LineEdit if no API client
+            self.destination = QLineEdit()
+            self.destination.setPlaceholderText("Ville / Destination")
         self.destination.setMinimumHeight(48)
         form_row.addWidget(self.destination)
         

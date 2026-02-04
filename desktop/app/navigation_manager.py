@@ -41,7 +41,7 @@ class NavigationManager:
         self.main_window.add_view("login", self.login_view)
         
         # Packages (NEW - default after login)
-        self.packages_view = PackagesView()
+        self.packages_view = PackagesView(api_client=self.api_client)
         self.packages_presenter = PackagesPresenter(self.packages_view, self.api_client)
         # Wire navigation from packages view
         self.packages_view.flights_requested.connect(lambda: self.main_window.switch_to_view("flights"))
@@ -50,8 +50,9 @@ class NavigationManager:
         self.packages_view.assistant_requested.connect(lambda: self.main_window.switch_to_view("assistant"))
         self.main_window.add_view("packages", self.packages_view)
         
+        
         # Flights (NEW)
-        self.flights_view = FlightsView()
+        self.flights_view = FlightsView(api_client=self.api_client)
         self.flights_presenter = FlightsPresenter(self.flights_view, self.api_client)
         # Wire navigation from flights view
         self.flights_view.packages_requested.connect(lambda: self.main_window.switch_to_view("packages"))
@@ -60,8 +61,9 @@ class NavigationManager:
         self.flights_view.assistant_requested.connect(lambda: self.main_window.switch_to_view("assistant"))
         self.main_window.add_view("flights", self.flights_view)
         
+        
         # Hotels (NEW)
-        self.hotels_view = HotelsView()
+        self.hotels_view = HotelsView(api_client=self.api_client)
         self.hotels_presenter = HotelsPresenter(self.hotels_view, self.api_client)
         # Wire navigation from hotels view
         self.hotels_view.packages_requested.connect(lambda: self.main_window.switch_to_view("packages"))

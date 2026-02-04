@@ -536,11 +536,13 @@ class BookingCommands:
                     "hotel_city": event.hotel_city,
                     "check_in": event.check_in,
                     "check_out": event.check_out,
+                    # Don't set offer_id - hotels don't have offer IDs
+                    # SQLAlchemy will use NULL by not including the field
                 })
             elif event.event_type == "PackageBooked":
                 booking_data.update({
                     "booking_type": BookingType.PACKAGE,
-                    "offer_id": event.offer_id,
+                    "offer_id": event.offer_id if hasattr(event, 'offer_id') else None,
                     "departure": event.departure,
                     "destination": event.destination,
                     "depart_date": event.depart_date,
