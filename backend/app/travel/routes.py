@@ -103,6 +103,14 @@ class BookingOut(BaseModel):
     check_out: Optional[str] = None
 
 
+class LocationOut(BaseModel):
+    """Location search response model"""
+    name: str
+    code: str
+    type: str  # CITY or AIRPORT
+    detail: str
+
+
 # ============================================================================
 # Query Endpoints (Read Operations - CQRS Query Side)
 # ============================================================================
@@ -123,8 +131,8 @@ async def search(
     No state is modified, only data retrieval and filtering.
     
     Query Parameters:
-    - departure: Departure city/airport
-    - destination: Destination city/airport
+    - departure: Departure city/airport IATA code (use /locations to find it)
+    - destination: Destination city/airport IATA code (use /locations to find it)
     - depart_date: Departure date (YYYY-MM-DD)
     - return_date: Return date (YYYY-MM-DD)
     - budget: Maximum budget (optional)
@@ -336,4 +344,52 @@ async def search_hotels(
         return await service.search_hotels(city_code)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Hotel search failed: {str(e)}")
+
+
+@router.get("/autocomplete")
+async def autocomplete(
+    q: str = Query(..., min_length=2, description="Search keyword (e.g. 'Lon', 'Par')")
+):
+    """
+    Autocomplete for airports and cities.
+    Returns: [{label, iata, name, country, type}, ...]
+    """
+    try:
+        async with TravelProvider() as provider:
+            return await provider.search_locations(q)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Autocomplete failed: {str(e)}")
+
+
+from app.auth.dependencies import get_current_user
+from app.auth.models import User
+
+@router.get("/my-bookings")
+async def get_my_bookings(
+    current_user: User = Depends(get_current_user),
+    queries: FlightQueries = Depends(get_flight_queries)
+):
+    """
+    Get all bookings for the current logged-in user.
+    """
+    try:
+        return await queries.get_user_bookings(current_user.id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get bookings: {str(e)}")
+
+
+@router.get("/locations", response_model=List[LocationOut])
+async def get_locations(
+    keyword: str = Query(..., min_length=2, description="Search keyword (e.g. 'Lon', 'Par')")
+):
+    """
+    Autocomplete for airports and cities.
+    
+    Use this endpoint to get official IATA codes for the search endpoint.
+    """
+    try:
+        async with TravelProvider() as provider:
+            return await provider.search_locations(keyword)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Location search failed: {str(e)}")
 

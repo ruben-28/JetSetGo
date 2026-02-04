@@ -21,16 +21,14 @@ class HistoryPresenter(QObject):
     
     def _load_bookings(self):
         """Load user's booking history from API."""
-        user_id = SESSION.user_id
-        
-        if not user_id:
+        if not SESSION.token:
             self.view.set_status("⚠️ Utilisateur non connecté")
             return
         
         self.view.set_status("🔄 Chargement de vos réservations...")
         
+        # Call API without user_id (handled by JWT)
         self.api.get_my_bookings_async(
-            user_id=user_id,
             on_success=self._on_bookings_loaded,
             on_error=self._on_bookings_error
         )

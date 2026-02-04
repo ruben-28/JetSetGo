@@ -155,30 +155,43 @@ class TravelService:
         if not flights:
             return []
             
-        # 2. Rechercher les hôtels (basé sur la destination)
-        hotels = await self.search_hotels(destination)
-        if not hotels:
-            # Si pas d'hôtel, on retourne juste les vols mais marqués comme incomplets ou on filtre
-            # Pour l'instant on retourne des packages avec "Pas d'hôtel dispo" si vide
-            pass
-
         packages = []
-        # Créer des combinaisons simples (1 Vol + 1 Hôtel suggéré)
-        # Pour éviter l'explosion combinatoire, on associe les meilleurs vols aux meilleurs hôtels
         
-        for i, flight in enumerate(flights):
-            # On cycle sur les hôtels disponibles
-            hotel = hotels[i % len(hotels)] if hotels else None
+        # Pour éviter de faire trop d'appels API (quota), on limite à quelques vols
+        # En production, on pourrait paralléliser ou cacher les résultats
+        for flight in flights[:5]:
+            # Dates du vol pour l'hôtel
+            check_in_date = flight['depart_date']
+            # Si pas de date de retour (aller simple), on assume 3 nuits par défaut pour le package
+            # ou on pourrait rejeter les aller-simples pour les packages
+            check_out_date = flight.get('return_date')
+            if not check_out_date:
+                # Calcul date + 3 jours (simplifié)
+                from datetime import datetime, timedelta
+                try:
+                    dt = datetime.strptime(check_in_date, "%Y-%m-%d")
+                    check_out_date = (dt + timedelta(days=3)).strftime("%Y-%m-%d")
+                except ValueError:
+                    continue
+
+            # Recherche d'hôtels correspondants à CE vol
+            hotels = await self.provider.search_hotels(destination, check_in_date, check_out_date)
             
-            package = {
-                "type": "package",
-                "id": f"PKG-{flight['id']}-{hotel['id'] if hotel else 'NONE'}",
-                "flight": flight,
-                "hotel": hotel,
-                "total_price": flight['price'] + (hotel['price'] if hotel else 0),
-                "currency": "EUR"
-            }
-            packages.append(package)
+            if not hotels:
+                continue
+
+            # Créer des packages pour ce vol avec les hôtels trouvés
+            # On prend les 3 premiers hôtels pour varier les options
+            for hotel in hotels[:3]:
+                package = {
+                    "type": "package",
+                    "id": f"PKG-{flight['id']}-{hotel['id']}",
+                    "flight": flight,
+                    "hotel": hotel,
+                    "total_price": flight['price'] + hotel['price'], # Total vol + hôtel
+                    "currency": "EUR"
+                }
+                packages.append(package)
             
         return packages
 

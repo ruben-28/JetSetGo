@@ -220,19 +220,36 @@ class AsyncApiClient(QObject):
         task = ApiTask(_book, on_success, on_error)
         self.thread_pool.start(task)
 
-    def get_my_bookings_async(self, user_id: int, on_success, on_error):
+    def get_my_bookings_async(self, on_success, on_error):
         """Get user's booking history (async, non-blocking)"""
         async def _get_bookings():
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     f"{self.base_url}/travel/my-bookings",
-                    params={"user_id": user_id},
+                    # No user_id param needed, handled by JWT in headers
                     headers=self._get_headers(),
                     timeout=15.0
                 )
                 return self._handle_response(response)
         
         task = ApiTask(_get_bookings, on_success, on_error)
+        self.thread_pool.start(task)
+
+    def get_autocomplete_async(self, keyword, on_success, on_error):
+        """Get autocomplete suggestions (async, non-blocking)"""
+        # Annuler les tâches précédentes serait bien, mais requiert une gestion complexe des tâches
+        # Pour l'instant on compte sur le debounce du côté Vue
+        async def _autocomplete():
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.base_url}/travel/autocomplete",
+                    params={"q": keyword},
+                    headers=self._get_headers(),
+                    timeout=5.0
+                )
+                return self._handle_response(response)
+        
+        task = ApiTask(_autocomplete, on_success, on_error)
         self.thread_pool.start(task)
     
     def consult_ai_async(self, mode: str, message: str, context: dict,

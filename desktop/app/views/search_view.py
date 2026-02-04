@@ -1,9 +1,9 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QMessageBox,
-    QHeaderView, QFrame, QComboBox, QDateEdit
+    QHeaderView, QFrame, QComboBox, QDateEdit, QCompleter
 )
-from PySide6.QtCore import Qt, QDate
+from PySide6.QtCore import Qt, QDate, QStringListModel
 from PySide6.QtGui import QPalette, QColor, QIcon
 from pathlib import Path
 
@@ -12,6 +12,15 @@ class SearchView(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("JetSetGo - Recherche de Vols")
+        
+        # Initialize completers
+        self.departure_completer = QCompleter()
+        self.departure_completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self.departure_completer.setFilterMode(Qt.MatchContains)
+        
+        self.destination_completer = QCompleter()
+        self.destination_completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self.destination_completer.setFilterMode(Qt.MatchContains)
         
         # Force window icon
         icon_path = Path(__file__).parent.parent.parent / "assets" / "logo.jpg"
@@ -92,14 +101,16 @@ class SearchView(QWidget):
         
         # Departure
         self.departure = QLineEdit()
-        self.departure.setPlaceholderText("Départ")
+        self.departure.setPlaceholderText("Départ (ex: Paris)")
         self.departure.setMinimumHeight(48)
+        self.departure.setCompleter(self.departure_completer)
         form_row.addWidget(self.departure)
         
         # Destination
         self.destination = QLineEdit()
-        self.destination.setPlaceholderText("Destination")
+        self.destination.setPlaceholderText("Destination (ex: New York)")
         self.destination.setMinimumHeight(48)
+        self.destination.setCompleter(self.destination_completer)
         form_row.addWidget(self.destination)
         
         # Departure date - Calendar picker with label
@@ -316,4 +327,12 @@ class SearchView(QWidget):
             "airline": airline_item.text() if airline_item else "",
             "price": price_item.text() if price_item else "0"
         }
+
+    def update_autocomplete_suggestions(self, field_name: str, labels: list):
+        """Update the completer model for the specified field."""
+        model = QStringListModel(labels)
+        if field_name == "departure":
+            self.departure_completer.setModel(model)
+        elif field_name == "destination":
+            self.destination_completer.setModel(model)
 

@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QMessageBox
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QObject, QTimer
 from services.session import SESSION
 
 class SearchPresenter(QObject):
@@ -9,14 +9,86 @@ class SearchPresenter(QObject):
         self.api = api_client
         self.last_offers = []
 
+        # Connect main buttons
         self.view.search_btn.clicked.connect(self.on_search)
         self.view.details_btn.clicked.connect(self.on_details)
         self.view.book_btn.clicked.connect(self.on_book)
 
+        # Autocomplete State
+        self.origin_iata = None
+        self.destination_iata = None
+        self.suggestions_cache = {} # Key: Label, Value: IATA
+
+        # Debounce Timer
+        self.debounce_timer = QTimer()
+        self.debounce_timer.setSingleShot(True)
+        self.debounce_timer.setInterval(300) # 300ms debounce
+        self.debounce_timer.timeout.connect(self._perform_autocomplete)
+        
+        # Connect text changes
+        self.view.departure.textChanged.connect(lambda t: self._on_text_changed("departure", t))
+        self.view.destination.textChanged.connect(lambda t: self._on_text_changed("destination", t))
+        
+        # Connect completions to store IATA codes
+        self.view.departure_completer.activated.connect(self._on_departure_selected)
+        self.view.destination_completer.activated.connect(self._on_destination_selected)
+
+    def _on_text_changed(self, field, text):
+        """Trigger debounce when text changes"""
+        if len(text) < 2:
+            return
+            
+        self._current_field_search = field
+        self._current_text = text
+        self.debounce_timer.start()
+
+    def _perform_autocomplete(self):
+        """Called by timer to execute search"""
+        keyword = self._current_text
+        # Call API
+        self.api.get_autocomplete_async(
+            keyword,
+            on_success=lambda res: self._on_autocomplete_success(self._current_field_search, res),
+            on_error=lambda err: print(f"Autocomplete error: {err}")
+        )
+
+    def _on_autocomplete_success(self, field, results):
+        """Update suggestions in view"""
+        labels = []
+        for item in results:
+            label = item['label']
+            labels.append(label)
+            # Cache the IATA code mapping
+            self.suggestions_cache[label] = item['iata']
+            
+        self.view.update_autocomplete_suggestions(field, labels)
+        
+    def _on_departure_selected(self, text):
+        """Store IATA code when user selects from list"""
+        if text in self.suggestions_cache:
+            self.origin_iata = self.suggestions_cache[text]
+            print(f"Selected Origin IATA: {self.origin_iata}")
+
+    def _on_destination_selected(self, text):
+        """Store IATA code when user selects from list"""
+        if text in self.suggestions_cache:
+            self.destination_iata = self.suggestions_cache[text]
+            print(f"Selected Dest IATA: {self.destination_iata}")
+
     def on_search(self):
         """Handle search button click - now async, won't freeze UI"""
-        departure = self.view.departure.text().strip()
-        dest = self.view.destination.text().strip()
+        # Prefer IATA codes if available from autocomplete selection
+        # Otherwise fall back to text, letting backend try to resolve
+        departure = self.origin_iata if self.origin_iata else self.view.departure.text().strip()
+        dest = self.destination_iata if self.destination_iata else self.view.destination.text().strip()
+        
+        # If user typed "Paris" but didn't select from dropdown, backend handles it.
+        # But if they cleared text, reset IATA.
+        if not self.view.departure.text().strip(): 
+            departure = ""
+        if not self.view.destination.text().strip():
+            dest = ""
+
         dep = self.view.depart_date.date().toString("yyyy-MM-dd")
         ret = self.view.return_date.date().toString("yyyy-MM-dd")
         bud_txt = self.view.budget.text().strip()
@@ -24,7 +96,8 @@ class SearchPresenter(QObject):
         if not departure or not dest:
             self.view.show_error("Remplis ville de départ et destination.")
             return
-
+            
+        # ... rest of search logic ...
         budget = None
         if bud_txt:
             try:

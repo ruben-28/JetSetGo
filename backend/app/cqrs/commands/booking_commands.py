@@ -29,7 +29,7 @@ class BookFlightCommand(BaseModel):
     
     This represents the user's intent to create a booking.
     """
-    offer_id: str = Field(..., min_length=5, description="Unique offer identifier")
+    offer_id: str = Field(..., min_length=1, description="Unique offer identifier")
     departure: str = Field(..., min_length=2, description="Departure city/airport")
     destination: str = Field(..., min_length=2, description="Destination city/airport")
     depart_date: str = Field(..., description="Departure date (YYYY-MM-DD)")
@@ -100,7 +100,7 @@ class BookPackageCommand(BaseModel):
     """
     Command to book a package (Flight + Hotel).
     """
-    offer_id: str = Field(..., min_length=5, description="Unique offer identifier for flight")
+    offer_id: str = Field(..., min_length=1, description="Unique offer identifier for flight")
     departure: str = Field(..., min_length=2, description="Departure city/airport")
     destination: str = Field(..., min_length=2, description="Destination city/airport")
     depart_date: str = Field(..., description="Departure/Check-in date (YYYY-MM-DD)")
@@ -327,6 +327,11 @@ class BookingCommands:
             }
         )
         
+        # TODO: Implement Payment Gateway (e.g. Stripe)
+        # Verify payment here:
+        # await self.payment_gateway.charge(command.price, command.payment_method)
+        # If payment fails, raise HTTPException and do NOT append event.
+
         # 4. Save Event FIRST
         await self.event_store.append(event)
         
@@ -390,6 +395,11 @@ class BookingCommands:
             }
         )
         
+        # TODO: Implement Payment Gateway (e.g. Stripe)
+        # Verify payment here:
+        # await self.payment_gateway.charge(command.price, command.payment_method)
+        # If payment fails, raise HTTPException and do NOT append event.
+
         # 4. Save Event FIRST
         await self.event_store.append(event)
         
@@ -566,23 +576,19 @@ class BookingCommands:
             
         except Exception as e:
             session.rollback()
-            # Log the error but don't fail the booking
-            # The event is already persisted, so the booking is technically valid
-            print(f"[WARNING] Failed to persist booking to read model: {e}")
-            return {
-                "id": booking_id,
-                "user_id": command.user_id,
-                "offer_id": command.offer_id,
-                "departure": command.departure,
-                "destination": command.destination,
-                "depart_date": command.depart_date,
-                "return_date": command.return_date,
-                "price": command.price,
-                "adults": command.adults,
-                "status": "confirmed",
-                "created_at": event.timestamp,
-                "event_id": event.event_id
-            }
+            # CRITICAL: Read Model is out of sync with Event Store
+            # In production, this should trigger an immediate alert or a background reconciliation job.
+            # We raise an exception to inform the caller, even though the event is persisted.
+            logger_msg = f"CRITICAL: Failed to persist booking {booking_id} to read model: {e}"
+            print(logger_msg) # Replace with logger.error(logger_msg)
+            
+            # Since the event is saved, the booking IS confirmed in the system of record.
+            # But the user won't see it in 'My Bookings'.
+            # We raise a 500 to indicate system inconsistency.
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Booking confirmed but failed to update view. Reference: {booking_id}"
+            )
         finally:
             session.close()
 

@@ -5,6 +5,10 @@ FastAPI backend with API Gateway pattern.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from app.auth.db import Base, engine
 from app.auth.routes import router as auth_router
@@ -62,4 +66,21 @@ async def health():
         "service": "JetSetGo API",
         "version": "1.0.0"
     }
+
+
+# ============================================================================
+# Debugging: Log Validation Errors
+# ============================================================================
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+import logging
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    logging.error(f"Validation Error: {exc.errors()}")
+    logging.error(f"Request Body: {exc.body}")
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(exc.body)},
+    )
 
