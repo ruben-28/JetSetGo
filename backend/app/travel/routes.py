@@ -374,7 +374,6 @@ async def search_packages(
         raise HTTPException(status_code=500, detail=f"Package search failed: {str(e)}")
 
 
-<<<<<<< HEAD
 @router.get("/hotels")
 async def search_hotels(
     city_code: str = Query(..., min_length=3, description="City IATA code or name")
@@ -436,5 +435,3 @@ async def get_locations(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Location search failed: {str(e)}")
 
-=======
->>>>>>> cb27edd0d154d91d1fb62895c194ab5a83aea805
