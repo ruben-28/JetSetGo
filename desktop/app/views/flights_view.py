@@ -3,17 +3,26 @@ from PySide6.QtWidgets import (
     QPushButton, QTableWidget, QTableWidgetItem, QMessageBox,
     QHeaderView, QFrame, QComboBox, QDateEdit
 )
-from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QPalette, QColor, QIcon
+from PySide6.QtCore import Qt, QDate, Signal
+from PySide6.QtGui import QColor, QIcon
 from pathlib import Path
 
 
-class SearchView(QWidget):
+class FlightsView(QWidget):
+    """
+    Flights View - Shows flight-only search and results
+    """
+    # Signals for navigation
+    packages_requested = Signal()
+    hotels_requested = Signal()
+    history_requested = Signal()
+    assistant_requested = Signal()
+    
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("JetSetGo - Recherche de Vols")
+        self.setWindowTitle("JetSetGo - Vols")
         
-        # Force window icon
+        # Try to set window icon
         icon_path = Path(__file__).parent.parent.parent / "assets" / "logo.jpg"
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
@@ -41,31 +50,31 @@ class SearchView(QWidget):
         header.addStretch()
         
         # Navigation buttons
-        flights_btn = QPushButton("Flights")
-        flights_btn.setObjectName("iconButton")
-        flights_btn.setMinimumHeight(40)
-        header.addWidget(flights_btn)
+        self.packages_btn = QPushButton("Packages")
+        self.packages_btn.setObjectName("iconButton")
+        self.packages_btn.setMinimumHeight(40)
+        self.packages_btn.setCursor(Qt.PointingHandCursor)
+        header.addWidget(self.packages_btn)
         
-        hotels_btn = QPushButton("Hotels")
-        hotels_btn.setObjectName("iconButton")
-        hotels_btn.setMinimumHeight(40)
-        header.addWidget(hotels_btn)
+        self.hotels_btn = QPushButton("Hôtels")
+        self.hotels_btn.setObjectName("iconButton")
+        self.hotels_btn.setMinimumHeight(40)
+        self.hotels_btn.setCursor(Qt.PointingHandCursor)
+        header.addWidget(self.hotels_btn)
         
-        # History button - Mes Voyages
         self.history_btn = QPushButton("Mes Voyages")
         self.history_btn.setObjectName("iconButton")
         self.history_btn.setMinimumHeight(40)
         self.history_btn.setCursor(Qt.PointingHandCursor)
         header.addWidget(self.history_btn)
         
-        # AI Assistant button
         self.ai_btn = QPushButton("Assistant IA")
         self.ai_btn.setObjectName("iconButton")
         self.ai_btn.setMinimumHeight(40)
         self.ai_btn.setCursor(Qt.PointingHandCursor)
         header.addWidget(self.ai_btn)
         
-        profile_btn = QPushButton("Profile")
+        profile_btn = QPushButton("Profil")
         profile_btn.setObjectName("iconButton")
         profile_btn.setMinimumHeight(40)
         header.addWidget(profile_btn)
@@ -82,17 +91,17 @@ class SearchView(QWidget):
         search_layout.setSpacing(18)
 
         # Search title
-        search_title = QLabel("Rechercher votre vol")
+        search_title = QLabel("Rechercher un Vol")
         search_title.setObjectName("sectionTitle")
         search_layout.addWidget(search_title)
 
-        # Single row with ALL fields
+        # Form fields
         form_row = QHBoxLayout()
         form_row.setSpacing(12)
         
-        # Departure
+        # Departure city
         self.departure = QLineEdit()
-        self.departure.setPlaceholderText("Départ")
+        self.departure.setPlaceholderText("Ville de départ")
         self.departure.setMinimumHeight(48)
         form_row.addWidget(self.departure)
         
@@ -102,27 +111,27 @@ class SearchView(QWidget):
         self.destination.setMinimumHeight(48)
         form_row.addWidget(self.destination)
         
-        # Departure date - Calendar picker with label
+        # Departure date
         depart_date_label = QLabel("Départ:")
         depart_date_label.setStyleSheet("color: #0077b6; font-weight: 600; font-size: 12px;")
         form_row.addWidget(depart_date_label)
         
         self.depart_date = QDateEdit()
         self.depart_date.setCalendarPopup(True)
-        self.depart_date.setDate(QDate.currentDate().addDays(7))  # Default to 1 week from now
+        self.depart_date.setDate(QDate.currentDate().addDays(7))
         self.depart_date.setDisplayFormat("yyyy-MM-dd")
         self.depart_date.setMinimumHeight(48)
         self.depart_date.setMinimumWidth(130)
         form_row.addWidget(self.depart_date)
         
-        # Return date - Calendar picker with label
+        # Return date
         return_date_label = QLabel("Retour:")
         return_date_label.setStyleSheet("color: #0077b6; font-weight: 600; font-size: 12px;")
         form_row.addWidget(return_date_label)
         
         self.return_date = QDateEdit()
         self.return_date.setCalendarPopup(True)
-        self.return_date.setDate(QDate.currentDate().addDays(14))  # Default to 2 weeks from now
+        self.return_date.setDate(QDate.currentDate().addDays(14))
         self.return_date.setDisplayFormat("yyyy-MM-dd")
         self.return_date.setMinimumHeight(48)
         self.return_date.setMinimumWidth(130)
@@ -160,7 +169,7 @@ class SearchView(QWidget):
         # ============================================
         # RESULTS TABLE
         # ============================================
-        results_label = QLabel("Résultats de recherche")
+        results_label = QLabel("Vols Disponibles")
         results_label.setObjectName("sectionTitle")
         results_label.setStyleSheet("color: #0077b6; font-size: 18px; font-weight: 700;")
         main_layout.addWidget(results_label)
@@ -184,25 +193,11 @@ class SearchView(QWidget):
         
         self.table.verticalHeader().setVisible(False)
         self.table.setMinimumHeight(200)
-        self.table.setMaximumHeight(400)  # Limit height to ensure buttons are visible
+        self.table.setMaximumHeight(400)
         
-        # Disable gridlines to prevent white line artifact
+        # Disable gridlines and focus
         self.table.setShowGrid(False)
-        # Disable focus rectangle
         self.table.setFocusPolicy(Qt.NoFocus)
-        
-        # Configure header font to prevent strikethrough
-        from PySide6.QtGui import QFont
-        header_font = self.table.horizontalHeader().font()
-        header_font.setStrikeOut(False)
-        header_font.setUnderline(False)
-        self.table.horizontalHeader().setFont(header_font)
-        
-        # Configure table font
-        table_font = self.table.font()
-        table_font.setStrikeOut(False)
-        table_font.setUnderline(False)
-        self.table.setFont(table_font)
         
         main_layout.addWidget(self.table)
 
@@ -218,7 +213,7 @@ class SearchView(QWidget):
                 padding: 10px;
             }
         """)
-        actions_frame.setFixedHeight(75)  # Fixed height to ensure visibility
+        actions_frame.setFixedHeight(75)
         actions_layout = QHBoxLayout(actions_frame)
         actions_layout.setContentsMargins(15, 10, 15, 10)
         actions_layout.setSpacing(15)
@@ -243,10 +238,15 @@ class SearchView(QWidget):
 
         # Connect signals
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
+        
+        # Connect navigation
+        self.packages_btn.clicked.connect(self.packages_requested.emit)
+        self.hotels_btn.clicked.connect(self.hotels_requested.emit)
+        self.history_btn.clicked.connect(self.history_requested.emit)
+        self.ai_btn.clicked.connect(self.assistant_requested.emit)
 
     def _on_selection_changed(self):
-        count = len(self.table.selectedItems())
-        has_selection = count > 0
+        has_selection = len(self.table.selectedItems()) > 0
         self.details_btn.setEnabled(has_selection)
         self.book_btn.setEnabled(has_selection)
 
@@ -260,8 +260,7 @@ class SearchView(QWidget):
         QMessageBox.information(self, "Info", message)
 
     def set_offers(self, offers: list):
-        import json
-        # Disable sorting while updating to prevent index issues
+        """Display flight results in the table"""
         self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
         
@@ -269,14 +268,11 @@ class SearchView(QWidget):
             row = self.table.rowCount()
             self.table.insertRow(row)
             
-            # Helper to create items with consistent styling
             def create_item(text):
                 item = QTableWidgetItem(str(text))
-                item.setForeground(QColor("#24292f"))  # Dark grey text
+                item.setForeground(QColor("#24292f"))
                 item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
-                # Make item read-only to stabilize selection rendering
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                # Ensure no strikethrough
                 font = item.font()
                 font.setStrikeOut(False)
                 item.setFont(font)
@@ -289,9 +285,7 @@ class SearchView(QWidget):
             self.table.setItem(row, 4, create_item(offer.get("stops", 0)))
             self.table.setItem(row, 5, create_item(offer.get("score", 0.0)))
 
-        # Re-enable sorting
         self.table.setSortingEnabled(True)
-        
         self.set_status(f"{len(offers)} vol(s) trouvé(s)")
 
     def get_selected_flight_data(self):
@@ -303,7 +297,6 @@ class SearchView(QWidget):
         if row < 0:
             return None
         
-        # Get items from each column
         id_item = self.table.item(row, 0)
         airline_item = self.table.item(row, 1)
         price_item = self.table.item(row, 2)
@@ -316,4 +309,3 @@ class SearchView(QWidget):
             "airline": airline_item.text() if airline_item else "",
             "price": price_item.text() if price_item else "0"
         }
-

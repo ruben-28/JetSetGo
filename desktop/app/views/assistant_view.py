@@ -55,7 +55,7 @@ class AssistantView(QWidget):
         layout.addLayout(header_layout)
         
         # Header
-        header_label = QLabel("🤖 Assistant IA JetSetGo")
+        header_label = QLabel("Assistant IA JetSetGo")
         header_label.setObjectName("header")
         header_label.setFont(QFont("Segoe UI", 24, QFont.Bold))
         layout.addWidget(header_label)
@@ -120,17 +120,17 @@ class AssistantView(QWidget):
         # Action buttons
         buttons_layout = QHBoxLayout()
         
-        self.send_btn = QPushButton("✉️ Envoyer")
+        self.send_btn = QPushButton("Envoyer")
         self.send_btn.setMinimumHeight(45)
         self.send_btn.setObjectName("primary")
         self.send_btn.clicked.connect(self._on_send_clicked)
         
-        self.copy_btn = QPushButton("📋 Copier réponse")
+        self.copy_btn = QPushButton("Copier réponse")
         self.copy_btn.setMinimumHeight(45)
         self.copy_btn.setEnabled(False)
         self.copy_btn.clicked.connect(self.copy_requested.emit)
         
-        self.new_conversation_btn = QPushButton("🔄 Nouvelle conversation")
+        self.new_conversation_btn = QPushButton("Nouvelle conversation")
         self.new_conversation_btn.setMinimumHeight(45)
         self.new_conversation_btn.clicked.connect(self.new_conversation_requested.emit)
         
@@ -159,7 +159,7 @@ class AssistantView(QWidget):
         """)
         
         banner_layout = QVBoxLayout(banner)
-        banner_label = QLabel("⚠️ Mode Démo - Ollama indisponible")
+        banner_label = QLabel("Mode Démo - Ollama indisponible")
         banner_label.setFont(QFont("Segoe UI", 11, QFont.Bold))
         banner_label.setStyleSheet("color: #856404;")
         
@@ -302,14 +302,12 @@ class AssistantView(QWidget):
         self.message_input.setEnabled(not loading)
         self.mode_selector.setEnabled(not loading)
     
-    def show_error(self, error: str):
         """Show error message"""
-        self.status_label.setText(f"❌ {error}")
+        self.status_label.setText(f"{error}")
         self.status_label.setStyleSheet("color: #dc3545; font-weight: bold;")
     
-    def show_success(self, message: str):
         """Show success message"""
-        self.status_label.setText(f"✅ {message}")
+        self.status_label.setText(f"{message}")
         self.status_label.setStyleSheet("color: #28a745;")
     
     def clear_status(self):

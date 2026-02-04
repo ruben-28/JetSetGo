@@ -49,7 +49,7 @@ class LoginView(QWidget):
             pixmap = pixmap.scaledToHeight(120, Qt.SmoothTransformation)
             logo.setPixmap(pixmap)
         else:
-            logo.setText("✈ (img not found)")
+            logo.setText("(img not found)")
             logo.setStyleSheet("font-size: 64px;")
 
         logo.setAlignment(Qt.AlignCenter)

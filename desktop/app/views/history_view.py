@@ -35,7 +35,7 @@ class HistoryView(QWidget):
         header.setSpacing(20)
         
         # Logo/Title
-        logo_title = QLabel('✈️ JetSet<span style="color: #ff6b35;">Go</span>')
+        logo_title = QLabel('JetSet<span style="color: #ff6b35;">Go</span>')
         logo_title.setObjectName("appTitle")
         logo_title.setTextFormat(Qt.RichText)
         header.addWidget(logo_title)
@@ -51,10 +51,9 @@ class HistoryView(QWidget):
         
         main_layout.addLayout(header)
 
-        # ============================================
         # TITLE
         # ============================================
-        title = QLabel("🧳 Mes Voyages")
+        title = QLabel("Mes Voyages")
         title.setObjectName("sectionTitle")
         title.setStyleSheet("color: #0077b6; font-size: 24px; font-weight: 700;")
         main_layout.addWidget(title)
@@ -137,4 +136,4 @@ class HistoryView(QWidget):
             self.table.setItem(row, 4, status_item)
 
         self.table.setSortingEnabled(True)
-        self.set_status(f"✨ {len(bookings)} réservation(s) trouvée(s)")
+        self.set_status(f"{len(bookings)} réservation(s) trouvée(s)")
