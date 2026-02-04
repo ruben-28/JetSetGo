@@ -235,6 +235,37 @@ class AsyncApiClient(QObject):
         task = ApiTask(_get_bookings, on_success, on_error)
         self.thread_pool.start(task)
     
+    def book_hotel_async(self, booking_data: dict, on_success, on_error):
+        """Book a hotel (async, non-blocking)"""
+        async def _book_hotel():
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.base_url}/travel/book/hotel",
+                    json=booking_data,
+                    headers=self._get_headers(),
+                    timeout=15.0
+                )
+                return self._handle_response(response)
+        
+        task = ApiTask(_book_hotel, on_success, on_error)
+        self.thread_pool.start(task)
+    
+    def search_cities_async(self, keyword: str, on_success, on_error):
+        """Search for cities/airports (async, non-blocking) - for autocomplete"""
+        async def _search_cities():
+            params = {"keyword": keyword}
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.base_url}/travel/cities/search",
+                    params=params,
+                    headers=self._get_headers(),
+                    timeout=10.0
+                )
+                return self._handle_response(response)
+        
+        task = ApiTask(_search_cities, on_success, on_error)
+        self.thread_pool.start(task)
+    
     def consult_ai_async(self, mode: str, message: str, context: dict,
                          on_success, on_error):
         """

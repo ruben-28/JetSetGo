@@ -439,3 +439,68 @@ class TravelProvider:
                 continue
         
         return results
+
+    async def search_cities(self, keyword: str) -> List[Dict]:
+        """
+        Recherche de villes/aéroports via Amadeus Location API.
+        Utilisé pour l'autocomplete dans l'UI.
+        
+        Args:
+            keyword: Mot-clé de recherche (ex: "Par" pour Paris)
+            
+        Returns:
+            Liste de dictionnaires contenant:
+            - name: Nom de la ville/aéroport
+            - iata_code: Code IATA (3 lettres)
+            - country: Pays
+            - type: 'CITY' ou 'AIRPORT'
+        """
+        if not self.client:
+            logger.error("Client Amadeus non initialisé.")
+            return []
+        
+        if not keyword or len(keyword) < 2:
+            logger.warning("Mot-clé trop court pour la recherche (min 2 caractères)")
+            return []
+        
+        try:
+            logger.info(f"Recherche de villes/aéroports pour: '{keyword}'")
+            
+            # Appel Amadeus Location API
+            response = self.client.reference_data.locations.get(
+                keyword=keyword,
+                subType='CITY,AIRPORT'
+            )
+            
+            if not response.data:
+                logger.info(f"Aucun résultat pour '{keyword}'")
+                return []
+            
+            # Parser les résultats
+            results = []
+            for location in response.data[:10]:  # Limiter à 10 résultats
+                try:
+                    result = {
+                        "name": location.get('name', 'Unknown'),
+                        "iata_code": location.get('iataCode', ''),
+                        "country": location.get('address', {}).get('countryName', 'Unknown'),
+                        "type": location.get('subType', 'CITY'),
+                        "city_name": location.get('address', {}).get('cityName', '')
+                    }
+                    results.append(result)
+                except (KeyError, AttributeError) as e:
+                    logger.warning(f"Erreur lors du parsing d'une location: {e}")
+                    continue
+            
+            logger.info(f"Recherche terminée: {len(results)} résultat(s) trouvé(s)")
+            return results
+            
+        except ResponseError as error:
+            logger.error(f"Erreur API Amadeus: {error}")
+            logger.error(f"Détails de l'erreur: {error.response.body if hasattr(error, 'response') else 'N/A'}")
+            return []
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la recherche de villes: {e}")
+            import traceback
+            logger.debug(f"Traceback: {traceback.format_exc()}")
+            return []

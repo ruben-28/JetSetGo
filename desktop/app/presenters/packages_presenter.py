@@ -19,7 +19,12 @@ class PackagesPresenter(QObject):
 
     def on_search(self):
         """Handle search button click for packages"""
-        destination = self.view.destination.text().strip()
+        # Get IATA code from autocomplete widget
+        if hasattr(self.view.destination, 'get_iata_code'):
+            destination = self.view.destination.get_iata_code()
+        else:
+            destination = self.view.destination.text().strip()
+            
         checkin = self.view.checkin_date.date().toString("yyyy-MM-dd")
         checkout = self.view.checkout_date.date().toString("yyyy-MM-dd")
         bud_txt = self.view.budget.text().strip()

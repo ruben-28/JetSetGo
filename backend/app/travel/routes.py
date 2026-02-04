@@ -302,9 +302,51 @@ async def get_my_bookings(
         raise HTTPException(status_code=500, detail=f"Failed to get bookings: {str(e)}")
 
 
+
+# ============================================================================
+# City/Airport Search Endpoint (for Autocomplete)
+# ============================================================================
+
+@router.get("/cities/search")
+async def search_cities(
+    keyword: str = Query(..., min_length=2, description="Search keyword (min 2 chars)"),
+    queries: FlightQueries = Depends(get_flight_queries)
+):
+    """
+    Search for cities and airports (for autocomplete).
+    
+    Query Parameters:
+    - keyword: Search keyword (e.g., "Par" for Paris)
+    
+    Returns:
+    - List of matching cities/airports with IATA codes
+    """
+    try:
+        # Use FlightQueries gateway to access the search
+        async with TravelProvider() as gateway:
+            results = await gateway.search_cities(keyword)
+            return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"City search failed: {str(e)}")
+
+
 # ============================================================================
 # New Endpoints for Packages and Hotels
 # ============================================================================
+
+@router.get("/hotels")
+async def search_hotels(
+    city_code: str = Query(..., min_length=3, description="City IATA code or name")
+):
+    """
+    Search for hotels in a specific city.
+    """
+    try:
+        service = TravelService()
+        return await service.search_hotels(city_code)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Hotel search failed: {str(e)}")
+
 
 @router.get("/packages")
 async def search_packages(
@@ -323,17 +365,4 @@ async def search_packages(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Package search failed: {str(e)}")
 
-
-@router.get("/hotels")
-async def search_hotels(
-    city_code: str = Query(..., min_length=3, description="City IATA code or name")
-):
-    """
-    Search for hotels in a specific city.
-    """
-    try:
-        service = TravelService()
-        return await service.search_hotels(city_code)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Hotel search failed: {str(e)}")
 

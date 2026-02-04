@@ -20,8 +20,17 @@ class FlightsPresenter(QObject):
 
     def on_search(self):
         """Handle search button click - async flight search"""
-        departure = self.view.departure.text().strip()
-        dest = self.view.destination.text().strip()
+        # Get IATA codes from autocomplete widgets
+        if hasattr(self.view.departure, 'get_iata_code'):
+            departure = self.view.departure.get_iata_code()
+        else:
+            departure = self.view.departure.text().strip()
+            
+        if hasattr(self.view.destination, 'get_iata_code'):
+            dest = self.view.destination.get_iata_code()
+        else:
+            dest = self.view.destination.text().strip()
+            
         dep = self.view.depart_date.date().toString("yyyy-MM-dd")
         ret = self.view.return_date.date().toString("yyyy-MM-dd")
         bud_txt = self.view.budget.text().strip()
@@ -45,7 +54,7 @@ class FlightsPresenter(QObject):
         self.view.search_btn.setEnabled(False)
         self.view.search_btn.setText("⏳ Recherche...")
 
-        # Call async API
+        # Call async API with IATA codes
         self.api.search_travel_async(
             departure, dest, dep, ret, budget,
             on_success=self._on_search_success,
