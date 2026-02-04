@@ -1,6 +1,6 @@
 """
 Assistant Presenter Module
-Business logic for AI consultation interface.
+Business logic for AI assistant interface with navigation support.
 """
 
 from PySide6.QtCore import QObject, Signal
@@ -13,11 +13,16 @@ class AssistantPresenter(QObject):
     
     Responsibilities:
     - Handle user interactions
-    - Manage API calls to consultation endpoint
+    - Manage API calls to assistant endpoint
+    - Handle navigation actions (flights, hotels, packages)
     - Update view with responses
-    - Handle demo mode indicators
     - Manage conversation history
     """
+    
+    # Navigation signals
+    navigate_to_flights = Signal(dict)  # {destination, travelers}
+    navigate_to_hotels = Signal(dict)   # {destination}
+    navigate_to_packages = Signal(dict)  # {destination}
     
     def __init__(self, view, api_client):
         super().__init__()
@@ -31,15 +36,8 @@ class AssistantPresenter(QObject):
         self.view.new_conversation_requested.connect(self.on_new_conversation)
     
     def on_send_message(self, mode: str, message: str):
-        """Handle send message request"""
-        # Validate length client-side (redundant with backend but good UX)
-        if len(message) > 8000:
-            self.view.show_error("Message trop long (max 8000 caractères)")
-            return
-        
-        # Build context from cached data (if any)
-        context = self._build_context()
-        
+        """Handle send message request (updated for new assistant API)"""
+        # For new assistant: ignore mode, use direct message
         # Add user message to UI immediately
         self.view.add_user_message(message)
         self.view.clear_status()
@@ -47,14 +45,35 @@ class AssistantPresenter(QObject):
         # Show loading
         self.view.set_loading(True)
         
-        # API call
-        self.api_client.consult_ai_async(
-            mode=mode,
+        # Call new assistant API
+        self.api_client.query_assistant_async(
             message=message,
-            context=context,
-            on_success=self.on_success,
+            on_success=self._on_assistant_response,
             on_error=self.on_error
         )
+    
+    def _on_assistant_response(self, response):
+        """Handle assistant response with navigation support"""
+        self.view.set_loading(False)
+        
+        # Extract response data
+        action = response.get("action", "chat_only")
+        target_view = response.get("target_view")
+        prefill_data = response.get("prefill_data", {})
+        response_text = response.get("response_text", "")
+        
+        # Add AI response to conversation
+        self.view.add_ai_message(response_text, "assistant")
+        self.last_response = response_text
+        
+        # Handle navigation actions
+        if action == "navigate":
+            if target_view == "flights":
+                self.navigate_to_flights.emit(prefill_data)
+            elif target_view == "hotels":
+                self.navigate_to_hotels.emit(prefill_data)
+            elif target_view == "packages":
+                self.navigate_to_packages.emit(prefill_data)
     
     def on_success(self, response):
         """Handle successful LLM response"""

@@ -153,11 +153,12 @@ class FlightsView(QWidget):
         self.passengers.setMinimumHeight(48)
         form_row.addWidget(self.passengers)
         
-        # Budget
-        self.budget = QLineEdit()
-        self.budget.setPlaceholderText("Budget")
-        self.budget.setMinimumHeight(48)
-        form_row.addWidget(self.budget)
+        # Stops filter
+        self.stops_filter = QComboBox()
+        self.stops_filter.addItems(["Tous les vols", "Direct uniquement", "Maximum 1 escale"])
+        self.stops_filter.setMinimumHeight(48)
+        self.stops_filter.setToolTip("Filtrer par nombre d'escales")
+        form_row.addWidget(self.stops_filter)
         
         search_layout.addLayout(form_row)
 

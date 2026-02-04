@@ -143,12 +143,6 @@ class PackagesView(QWidget):
         self.passengers.setMinimumHeight(48)
         form_row.addWidget(self.passengers)
         
-        # Budget
-        self.budget = QLineEdit()
-        self.budget.setPlaceholderText("Budget")
-        self.budget.setMinimumHeight(48)
-        form_row.addWidget(self.budget)
-        
         search_layout.addLayout(form_row)
 
         # Search button

@@ -28,21 +28,10 @@ class HotelsPresenter(QObject):
             
         checkin = self.view.checkin_date.date().toString("yyyy-MM-dd")
         checkout = self.view.checkout_date.date().toString("yyyy-MM-dd")
-        bud_txt = self.view.budget.text().strip()
 
         if not destination:
             self.view.show_error("Veuillez entrer une destination.")
             return
-
-        budget = None
-        if bud_txt:
-            try:
-                budget = int(bud_txt)
-                if budget < 0:
-                    raise ValueError()
-            except Exception:
-                self.view.show_error("Budget invalide (nombre positif).")
-                return
 
         # Show loading state
         self.view.set_status("🔄 Recherche d'hôtels en cours...")
@@ -102,10 +91,10 @@ class HotelsPresenter(QObject):
         reply = QMessageBox.question(
             self.view,
             "Confirmation de réservation",
-            f"Voulez-vous réserver cet hôtel ?\\n\\n"
-            f"Hôtel: {data['name']}\\n"
-            f"Prix: {data['price']}\\n"
-            f"Check-in: {checkin}\\n"
+            f"Voulez-vous réserver cet hôtel ?\n\n"
+            f"Hôtel: {data['name']}\n"
+            f"Prix: {data['price']}\n"
+            f"Check-in: {checkin}\n"
             f"Check-out: {checkout}",
             QMessageBox.Yes | QMessageBox.No
         )
@@ -120,10 +109,16 @@ class HotelsPresenter(QObject):
                 self.view.show_error("Erreur lors de la lecture du prix.")
                 return
 
+            # Get IATA code from autocomplete widget (same as in on_search)
+            if hasattr(self.view.destination, 'get_iata_code'):
+                hotel_city = self.view.destination.get_iata_code()
+            else:
+                hotel_city = self.view.destination.text().strip()
+
             # Prepare booking payload matching BookHotelCommand
             payload = {
                 "hotel_name": data['name'],
-                "hotel_city": self.view.destination.text().strip(),
+                "hotel_city": hotel_city,  # Use IATA code, not display text
                 "check_in": checkin,
                 "check_out": checkout,
                 "price": price,

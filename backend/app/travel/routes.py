@@ -122,6 +122,7 @@ async def search(
     depart_date: str = Query(..., description="Departure date (YYYY-MM-DD)"),
     return_date: str = Query(..., description="Return date (YYYY-MM-DD)"),
     budget: Optional[int] = Query(None, ge=0, description="Maximum budget"),
+    max_stops: Optional[int] = Query(None, ge=0, le=5, description="Max stops (0=direct, 1=max 1 stop, None=all)"),
     queries: FlightQueries = Depends(get_flight_queries)
 ):
     """
@@ -136,6 +137,7 @@ async def search(
     - depart_date: Departure date (YYYY-MM-DD)
     - return_date: Return date (YYYY-MM-DD)
     - budget: Maximum budget (optional)
+    - max_stops: Maximum number of stops (0 = direct only, 1 = max 1 stop, None = all flights)
     
     Returns:
     - List of flight offers sorted by price
@@ -147,7 +149,8 @@ async def search(
             depart_date=depart_date,
             return_date=return_date,
             adults=1,  # Default to 1 adult for backward compatibility
-            budget=budget
+            budget=budget,
+            max_stops=max_stops
         )
         return offers
     except HTTPException:
@@ -286,31 +289,6 @@ class UserBookingOut(BaseModel):
     check_in: Optional[str] = None
     check_out: Optional[str] = None
 
-
-@router.get("/my-bookings", response_model=List[UserBookingOut])
-async def get_my_bookings(
-    user_id: int = Query(..., description="User ID to fetch bookings for"),
-    queries: FlightQueries = Depends(get_flight_queries)
-):
-    """
-    Get all bookings for the current user (QUERY - Read operation from Read Model).
-    
-    Query Parameters:
-    - user_id: User ID (from JWT token in real implementation)
-    
-    Returns:
-    - List of user's bookings ordered by creation date (newest first)
-    """
-    try:
-        bookings = await queries.get_user_bookings(user_id)
-        return bookings
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get bookings: {str(e)}")
-
-
-
 # ============================================================================
 # City/Airport Search Endpoint (for Autocomplete)
 # ============================================================================
@@ -406,18 +384,20 @@ async def autocomplete(
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 
-@router.get("/my-bookings")
+@router.get("/my-bookings", response_model=List[UserBookingOut])
 async def get_my_bookings(
     current_user: User = Depends(get_current_user),
     queries: FlightQueries = Depends(get_flight_queries)
 ):
     """
     Get all bookings for the current logged-in user.
+    Uses JWT token authentication to identify the user.
     """
     try:
         return await queries.get_user_bookings(current_user.id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get bookings: {str(e)}")
+
 
 
 @router.get("/locations", response_model=List[LocationOut])

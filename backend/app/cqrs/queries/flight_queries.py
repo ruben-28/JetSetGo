@@ -47,7 +47,8 @@ class FlightQueries:
         depart_date: str,
         return_date: Optional[str] = None,
         adults: int = 1,
-        budget: Optional[int] = None
+        budget: Optional[int] = None,
+        max_stops: Optional[int] = None
     ) -> List[Dict]:
         """
         Search for flight offers (READ operation).
@@ -66,6 +67,7 @@ class FlightQueries:
             return_date: Return date (YYYY-MM-DD), optional
             adults: Number of adult passengers
             budget: Maximum budget (optional filter)
+            max_stops: Maximum number of stops (0=direct, 1=max 1 stop, None=all)
         
         Returns:
             List of flight offers (filtered and sorted)
@@ -78,13 +80,14 @@ class FlightQueries:
         self._validate_adults(adults)
         self._validate_budget(budget)
         
-        # 2. Fetch data from gateway
+        # 2. Fetch data from gateway with max_stops filter
         offers = await self.gateway.search_flights(
             origin=origin,
             destination=destination,
             depart_date=depart_date,
             return_date=return_date,
-            adults=adults
+            adults=adults,
+            max_stops=max_stops
         )
         
         # 3. Apply business rules (read-side filters)

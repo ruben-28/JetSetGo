@@ -32,6 +32,7 @@ class MainWindow(QMainWindow):
         
         # Track views by name for easy access
         self.views = {}  # {"login": LoginView(), "search": SearchView(), ...}
+        self.view_callbacks = {}  # {"history": callback_function, ...}
         
         # Load stylesheet
         self._load_stylesheet()
@@ -45,17 +46,20 @@ class MainWindow(QMainWindow):
             with open(style_path, "r", encoding="utf-8") as f:
                 self.setStyleSheet(f.read())
     
-    def add_view(self, name: str, view: QWidget):
+    def add_view(self, name: str, view: QWidget, on_show_callback=None):
         """
         Add a view to the stack (call once per view).
         
         Args:
             name: Unique view name (e.g., "login", "search", "history", "assistant")
             view: View widget instance
+            on_show_callback: Optional callback to run when view is shown
         """
         if name not in self.views:
             self.views[name] = view
             self.stacked_widget.addWidget(view)
+            if on_show_callback:
+                self.view_callbacks[name] = on_show_callback
     
     def switch_to_view(self, name: str):
         """
@@ -70,5 +74,10 @@ class MainWindow(QMainWindow):
         if name in self.views:
             view = self.views[name]
             self.stacked_widget.setCurrentWidget(view)
+            
+            # Call activation callback if registered
+            if name in self.view_callbacks:
+                self.view_callbacks[name]()
         else:
             raise ValueError(f"View '{name}' not registered. Call add_view() first.")
+

@@ -125,7 +125,7 @@ class TravelProvider:
              return code
         return keyword
 
-    async def search_flights(self, origin: str, destination: str, depart_date: str, return_date: Optional[str] = None, adults: int = 1, budget: Optional[int] = None) -> List[Dict]:
+    async def search_flights(self, origin: str, destination: str, depart_date: str, return_date: Optional[str] = None, adults: int = 1, budget: Optional[int] = None, max_stops: Optional[int] = None) -> List[Dict]:
         """Recherche des vols réels via Amadeus."""
         if not self.client:
             logger.error("Client Amadeus non initialisé.")
@@ -154,6 +154,15 @@ class TravelProvider:
                 params['returnDate'] = return_date
             if budget:
                 params['maxPrice'] = int(budget)
+            
+            # Add stops filter for Amadeus API
+            if max_stops is not None:
+                if max_stops == 0:
+                    # Direct flights only
+                    params['nonStop'] = 'true'
+                elif max_stops > 0:
+                    # Maximum number of connections (stops)
+                    params['max'] = max_stops
 
             response = self.client.shopping.flight_offers_search.get(**params)
             

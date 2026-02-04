@@ -16,7 +16,11 @@ class HistoryPresenter(QObject):
         # Connect signals
         self.view.back_btn.clicked.connect(self._on_back_clicked)
         
-        # Load bookings on init
+        # Don't load bookings here - wait until view is shown
+        # This avoids "User not connected" message at startup
+    
+    def reload_bookings(self):
+        """Public method to reload bookings - call when view is shown."""
         self._load_bookings()
     
     def _load_bookings(self):

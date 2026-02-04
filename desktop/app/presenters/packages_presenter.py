@@ -27,21 +27,10 @@ class PackagesPresenter(QObject):
             
         checkin = self.view.checkin_date.date().toString("yyyy-MM-dd")
         checkout = self.view.checkout_date.date().toString("yyyy-MM-dd")
-        bud_txt = self.view.budget.text().strip()
 
         if not destination:
             self.view.show_error("Veuillez entrer une destination.")
             return
-
-        budget = None
-        if bud_txt:
-            try:
-                budget = int(bud_txt)
-                if budget < 0:
-                    raise ValueError()
-            except Exception:
-                self.view.show_error("Budget invalide (nombre positif).")
-                return
 
         # Show loading state
         self.view.set_status("🔄 Recherche de packages en cours...")

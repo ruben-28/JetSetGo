@@ -302,12 +302,14 @@ class AssistantView(QWidget):
         self.message_input.setEnabled(not loading)
         self.mode_selector.setEnabled(not loading)
     
+    def show_error(self, error: str):
         """Show error message"""
-        self.status_label.setText(f"{error}")
+        self.status_label.setText(f"❌ {error}")
         self.status_label.setStyleSheet("color: #dc3545; font-weight: bold;")
     
+    def show_success(self, message: str):
         """Show success message"""
-        self.status_label.setText(f"{message}")
+        self.status_label.setText(f"✅ {message}")
         self.status_label.setStyleSheet("color: #28a745;")
     
     def clear_status(self):

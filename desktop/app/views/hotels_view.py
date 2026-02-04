@@ -144,12 +144,6 @@ class HotelsView(QWidget):
         self.guests.setMinimumHeight(48)
         form_row.addWidget(self.guests)
         
-        # Budget
-        self.budget = QLineEdit()
-        self.budget.setPlaceholderText("Budget")
-        self.budget.setMinimumHeight(48)
-        form_row.addWidget(self.budget)
-        
         search_layout.addLayout(form_row)
 
         # Search button

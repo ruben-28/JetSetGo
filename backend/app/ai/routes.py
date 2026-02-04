@@ -1,17 +1,20 @@
 """
 AI Router Module
-HTTP endpoints for AI-related operations (text analysis, NLP, LLM consultation).
+HTTP endpoints for AI-related operations (text analysis, NLP, LLM consultation, assistant).
 """
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional, Dict, Any
 import logging
 
 from app.gateway import HFGateway
 from app.services import AIService
 from app.ai.schemas import ConsultRequest, ConsultResponse
 from app.ai.provider_factory import get_llm_provider
+from app.ai.assistant_orchestrator import AssistantOrchestrator
+from app.auth.dependencies import get_current_user
+from app.auth.models import User
 
 
 logger = logging.getLogger(__name__)
@@ -103,6 +106,25 @@ class AnalyzeResponse(BaseModel):
 
 
 # ============================================================================
+# Assistant Request/Response Models (NEW)
+# ============================================================================
+
+class AssistantRequest(BaseModel):
+    """Request for AI assistant."""
+    message: str = Field(..., min_length=1, max_length=500, description="User message")
+
+
+class AssistantResponse(BaseModel):
+    """Response from AI assistant."""
+    action: str = Field(..., description="Action type: navigate, prefill_search, display_results, chat_only")
+    target_view: Optional[str] = Field(None, description="Target view: flights, hotels, packages, null")
+    prefill_data: Optional[Dict[str, Any]] = Field(None, description="Data to prefill in search form")
+    search_results: Optional[List[Dict]] = Field(None, description="Search results if action is display_results")
+    response_text: str = Field(..., description="Natural language response to display")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+
+
+# ============================================================================
 # Endpoints
 # ============================================================================
 
@@ -184,4 +206,49 @@ async def consult(
     except Exception as e:
         logger.exception("Consultation failed")
         raise HTTPException(status_code=500, detail=f"Consultation failed: {str(e)}")
+
+
+@router.post("/assistant", response_model=AssistantResponse)
+async def query_assistant(
+    request: AssistantRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Main AI assistant endpoint using HuggingFace + Ollama architecture.
+    
+    Process user message through:
+    1. Hugging Face analysis (intent classification + entity extraction)
+    2. Backend orchestration (decision logic)
+    3. Ollama generation (natural language response)
+    
+    **Actions**:
+    - **navigate**: Navigate to a specific view with prefilled data
+    - **display_results**: Show search results in target view
+    - **chat_only**: Just display the response text (no navigation)
+    
+    **Example**:
+    User: "Je cherche un vol pour Paris"
+    →
+    {
+      "action": "navigate",
+      "target_view": "flights",
+      "prefill_data": {"destination": "Paris"},
+      "response_text": "Je vous amène à la recherche de vols pour Paris."
+    }
+    """
+    orchestrator = AssistantOrchestrator()
+    
+    try:
+        result = await orchestrator.process_message(
+            user_message=request.message,
+            user_id=current_user.id
+        )
+        return result
+    
+    except Exception as e:
+        logger.exception("Assistant error")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Assistant error: {str(e)}"
+        )
 

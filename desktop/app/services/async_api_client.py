@@ -126,7 +126,8 @@ class AsyncApiClient(QObject):
     
     def search_travel_async(self, departure: str, destination: str,
                            depart_date: str, return_date: str,
-                           budget: Optional[int], on_success, on_error):
+                           budget: Optional[int], max_stops: Optional[int] = None,
+                           on_success=None, on_error=None):
         """Search travel offers (async, non-blocking)"""
         async def _search():
             params = {
@@ -137,6 +138,8 @@ class AsyncApiClient(QObject):
             }
             if budget is not None:
                 params["budget"] = budget
+            if max_stops is not None:
+                params["max_stops"] = max_stops
             
             async with httpx.AsyncClient() as client:
                 response = await client.get(
@@ -233,6 +236,21 @@ class AsyncApiClient(QObject):
                 return self._handle_response(response)
         
         task = ApiTask(_get_bookings, on_success, on_error)
+        self.thread_pool.start(task)
+    
+    def query_assistant_async(self, message: str, on_success, on_error):
+        """Query AI assistant with navigation support (async, non-blocking)"""
+        async def _query():
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.base_url}/api/ai/assistant",
+                    json={"message": message},
+                    headers=self._get_headers(),
+                    timeout=30.0
+                )
+                return self._handle_response(response)
+        
+        task = ApiTask(_query, on_success, on_error)
         self.thread_pool.start(task)
 
     def get_autocomplete_async(self, keyword, on_success, on_error):

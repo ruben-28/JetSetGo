@@ -68,9 +68,9 @@ class HistoryView(QWidget):
         # ============================================
         # BOOKINGS TABLE
         # ============================================
-        self.table = QTableWidget(0, 5)
+        self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Destination", "Date de départ", "Prix (€)", "Statut"
+            "ID", "Type", "Départ", "Destination", "Date", "Prix (€)", "Statut"
         ])
         self.table.setSortingEnabled(True)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -78,11 +78,13 @@ class HistoryView(QWidget):
         
         # Configure column widths
         header_view = self.table.horizontalHeader()
-        header_view.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header_view.setSectionResizeMode(1, QHeaderView.Stretch)
-        header_view.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header_view.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header_view.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header_view.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # ID
+        header_view.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Type
+        header_view.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Départ
+        header_view.setSectionResizeMode(3, QHeaderView.Stretch)           # Destination
+        header_view.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Date
+        header_view.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Prix
+        header_view.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # Statut
         
         self.table.verticalHeader().setVisible(False)
         self.table.setMinimumHeight(400)
@@ -119,21 +121,71 @@ class HistoryView(QWidget):
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 return item
             
-            # Short ID (first 8 chars)
+            # Get booking type (default to FLIGHT for backward compatibility)
+            booking_type = booking.get("booking_type", "FLIGHT")
+            
+            # Column 0: Short ID (first 8 chars)
             short_id = booking.get("id", "")[:8] + "..."
             self.table.setItem(row, 0, create_item(short_id))
-            self.table.setItem(row, 1, create_item(booking.get("destination", "")))
-            self.table.setItem(row, 2, create_item(booking.get("depart_date", "")))
-            self.table.setItem(row, 3, create_item(f"{booking.get('price', 0):.2f} €"))
             
-            # Status with color
+            # Column 1: Type in French
+            type_labels = {
+                "FLIGHT": "✈️ Vol",
+                "HOTEL": "🏨 Hôtel", 
+                "PACKAGE": "📦 Package"
+            }
+            type_label = type_labels.get(booking_type, booking_type)
+            self.table.setItem(row, 1, create_item(type_label))
+            
+            # Column 2: Départ (varies by type)
+            if booking_type == "HOTEL":
+                # Hotels don't have a departure city
+                departure = "—"
+            elif booking_type == "PACKAGE":
+                departure = booking.get("departure", "")
+            else:  # FLIGHT
+                departure = booking.get("departure", "")
+            
+            self.table.setItem(row, 2, create_item(departure))
+            
+            # Column 3: Destination (varies by type)
+            if booking_type == "HOTEL":
+                # For hotels, show hotel name and city
+                hotel_name = booking.get("hotel_name", "")
+                hotel_city = booking.get("hotel_city", "")
+                destination = f"{hotel_name} ({hotel_city})" if hotel_name else hotel_city
+            elif booking_type == "PACKAGE":
+                # For packages, show destination + hotel
+                dest = booking.get("destination", "")
+                hotel_name = booking.get("hotel_name", "")
+                destination = f"{dest} - {hotel_name}" if hotel_name else dest
+            else:  # FLIGHT
+                destination = booking.get("destination", "")
+            
+            self.table.setItem(row, 3, create_item(destination))
+            
+            # Column 4: Date (varies by type)
+            if booking_type == "HOTEL":
+                date = booking.get("check_in", "")
+            elif booking_type == "PACKAGE":
+                date = booking.get("depart_date", "")
+            else:  # FLIGHT
+                date = booking.get("depart_date", "")
+            
+            self.table.setItem(row, 4, create_item(date))
+            
+            # Column 5: Price
+            self.table.setItem(row, 5, create_item(f"{booking.get('price', 0):.2f} €"))
+            
+            # Column 6: Status with color
             status = booking.get("status", "unknown")
             status_item = create_item(status.upper())
             if status == "confirmed":
                 status_item.setForeground(QColor("#22c55e"))  # Green
             elif status == "cancelled":
                 status_item.setForeground(QColor("#ef4444"))  # Red
-            self.table.setItem(row, 4, status_item)
+            self.table.setItem(row, 6, status_item)
 
         self.table.setSortingEnabled(True)
         self.set_status(f"{len(bookings)} réservation(s) trouvée(s)")
+
