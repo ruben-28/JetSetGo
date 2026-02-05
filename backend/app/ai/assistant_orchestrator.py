@@ -79,15 +79,16 @@ class AssistantOrchestrator:
         """
         message_lower = message.lower()
         
-        # Detect intent
-        if any(word in message_lower for word in ["vol", "vols", "flight", "avion", "fly", "voler"]):
+        # Detect intent (ORDER MATTERS - check inspiration FIRST to avoid conflicts)
+        # Inspiration has priority over package_search to handle "idée de voyage"
+        if any(word in message_lower for word in ["idée", "idees", "inspiration", "suggest", "recommand", "conseil", "propose"]):
+            intent = "inspiration"
+        elif any(word in message_lower for word in ["vol", "vols", "flight", "avion", "fly", "voler"]):
             intent = "flight_search"
         elif any(word in message_lower for word in ["hotel", "hôtel", "hébergement", "accommodation", "logement"]):
             intent = "hotel_search"
         elif any(word in message_lower for word in ["package", "packages", "voyage", "séjour", "trip", "vacances"]):
             intent = "package_search"
-        elif any(word in message_lower for word in ["idée", "idees", "inspiration", "suggest", "recommand", "conseil"]):
-            intent = "inspiration"
         else:
             intent = "general"
         
@@ -100,7 +101,7 @@ class AssistantOrchestrator:
         }
     
     def _extract_entities(self, message: str) -> Dict:
-        """Extract destination, dates, travelers using simple patterns."""
+        """Extract destination, dates, travelers, period, preferences using simple patterns."""
         # List of major cities
         cities = [
             "Paris", "London", "New York", "Tokyo", "Rome", "Barcelona",
@@ -109,15 +110,46 @@ class AssistantOrchestrator:
             "Los Angeles", "Miami", "Toronto", "Montreal", "Cancun", "Marrakech"
         ]
         
+        message_lower = message.lower()
+        
         destination = None
         for city in cities:
-            if city.lower() in message.lower():
+            if city.lower() in message_lower:
                 destination = city
                 break
         
+        # Extract period/month
+        months = {
+            "janvier": "janvier", "février": "février", "mars": "mars", "avril": "avril",
+            "mai": "mai", "juin": "juin", "juillet": "juillet", "août": "août",
+            "septembre": "septembre", "octobre": "octobre", "novembre": "novembre", "décembre": "décembre",
+            "january": "janvier", "february": "février", "march": "mars", "april": "avril",
+            "may": "mai", "june": "juin", "july": "juillet", "august": "août",
+            "september": "septembre", "october": "octobre", "november": "novembre", "december": "décembre"
+        }
+        
+        period = None
+        for month_key, month_val in months.items():
+            if month_key in message_lower:
+                period = month_val
+                break
+        
+        # Extract preferences
+        preferences = []
+        if any(word in message_lower for word in ["soleil", "sun", "plage", "beach", "chaud", "warm"]):
+            preferences.append("soleil/plage")
+        if any(word in message_lower for word in ["culture", "musée", "museum", "histoire", "history"]):
+            preferences.append("culture")
+        if any(word in message_lower for word in ["nature", "montagne", "mountain", "randonnée", "hiking"]):
+            preferences.append("nature")
+        if any(word in message_lower for word in ["aventure", "adventure", "sport"]):
+            preferences.append("aventure")
+        
         return {
             "destination": destination,
-            "dates": None,  # Can be enhanced
+            "period": period,
+            "preferences": preferences,
+            "dates": None,  # Can be enhanced with date parsing
             "travelers": None  # Can be enhanced
         }
     
@@ -125,7 +157,7 @@ class AssistantOrchestrator:
         """Generate natural language response using Ollama."""
         
         # Build messages for Ollama chat API
-        system_message = "Tu es un assistant de voyage intelligent et sympathique pour JetSetGo."
+        system_message = "Tu es un assistant de voyage intelligent et sympathique pour JetSetGo. Sois enthousiaste, mais reste équilibré et objectif, notamment concernant la sécurité et la situation politique."
         
         if prompt_type == "navigate_to_flights":
             user_prompt = f"L'utilisateur veut chercher des vols pour {context.get('destination', 'une destination')}. Confirme que tu vas l'amener à la recherche de vols. Sois bref (1 phrase)."
@@ -141,17 +173,31 @@ class AssistantOrchestrator:
             user_prompt = f"Demande poliment à l'utilisateur de préciser {missing}. Sois bref (1 phrase)."
         
         elif prompt_type == "inspiration":
+            # Utiliser le contexte extrait
+            period = context.get('period', '')
+            prefs = context.get('preferences', [])
+            user_msg = context.get('message', '')
+            
+            # Construire le texte contextualisé
+            period_text = f" pour {period}" if period else ""
+            prefs_text = f" (préférences: {', '.join(prefs)})" if prefs else ""
+            
             user_prompt = (
-                "L'utilisateur cherche de l'inspiration pour un voyage. "
-                "Tu DOIS suggérer 2-3 destinations concrètes avec leurs points forts. "
-                "Ne pose PAS de question, donne directement des suggestions. "
-                "Format: [Destination] - [Points forts]. "
-                "Sois enthousiaste et concis (3-4 phrases max). "
-                "Exemple: 'Je vous suggère Paris pour sa culture et sa gastronomie, Tokyo pour...'"
+                f"L'utilisateur dit : '{user_msg}'\n"
+                f"CONTEXTE: Il cherche des idées de voyage{period_text}{prefs_text}.\n\n"
+                f"INSTRUCTIONS :\n"
+                f"1. Si la demande concerne un pays spécifique ou demande un avis (ex: 'est-ce que X est dangereux ?', 'avis sur Y') :\n"
+                f"   - Donne une réponse, paragraphe par paragraphe, équilibrée et nuancée.\n"
+                f"   - Mentionne EXPLICITEMENT les risques sécurité/politique si nécessaire.\n"
+                f"   - NE PAS utiliser de format liste ni d'emojis.\n\n"
+                f"2. Sinon (si l'utilisateur veut juste des idées) :\n"
+                f"   - Suggère 3-4 destinations.\n"
+                f"   - Format OBLIGATOIRE: Nom - raison courte.\n"
+                f"   - N'utilise JAMAIS d'emojis."
             )
         
         else:  # general
-            user_prompt = f"Réponds à: {context.get('message', '')}. Sois sympathique et bref (1-2 phrases)."
+            user_prompt = f"L'utilisateur dit : '{context.get('message', '')}'\nRéponds de manière sympathique mais sans utiliser d'emojis. Si la question porte sur la sécurité ou un avis (ex: Iran, Corée du Nord...), sois nuancé et mentionne les risques éventuels. Sois bref."
         
         messages = [
             {"role": "system", "content": system_message},
@@ -164,7 +210,7 @@ class AssistantOrchestrator:
                 result = await gateway.chat_completion(
                     messages=messages,
                     temperature=0.7,
-                    max_tokens=150
+                    max_tokens=700
                 )
                 return result["content"]
         
@@ -293,10 +339,17 @@ class AssistantOrchestrator:
         }
     
     async def _handle_inspiration(self, entities: Dict, user_message: str) -> Dict:
-        """Handle inspiration requests."""
+        """Handle inspiration requests with contextualized suggestions."""
+        # Pass extracted context to Ollama for personalized suggestions
+        context = {
+            "period": entities.get("period"),
+            "preferences": entities.get("preferences", []),
+            "message": user_message
+        }
+        
         response = await self._generate_ollama_response(
             "inspiration",
-            {}
+            context
         )
         
         return {
@@ -305,7 +358,10 @@ class AssistantOrchestrator:
             "prefill_data": None,
             "search_results": None,
             "response_text": response,
-            "metadata": {"inspiration": True}
+            "metadata": {
+                "inspiration": True,
+                "context": context
+            }
         }
     
     async def _handle_general_conversation(self, user_message: str) -> Dict:

@@ -64,31 +64,19 @@ class AssistantView(QWidget):
         self.demo_banner = self._create_demo_banner()
         layout.addWidget(self.demo_banner)
         
-        # Mode selector
-        mode_layout = QHBoxLayout()
-        mode_label = QLabel("Mode:")
-        mode_label.setFont(QFont("Segoe UI", 11))
-        self.mode_selector = QComboBox()
-        self.mode_selector.addItems([
-            "Comparer des offres",
-            "Conseil budget",
-            "Expliquer politique",
-            "Question libre"
-        ])
-        self.mode_selector.setMinimumWidth(250)
-        mode_layout.addWidget(mode_label)
-        mode_layout.addWidget(self.mode_selector)
-        mode_layout.addStretch()
-        layout.addLayout(mode_layout)
         
-        # Conversation area
+        # Mode selector removed - more space for conversation
+        
+        # Conversation area (AMÉLIORÉ: espacement optimisé)
         self.conversation_scroll = QScrollArea()
         self.conversation_scroll.setWidgetResizable(True)
-        self.conversation_scroll.setMinimumHeight(350)
+        self.conversation_scroll.setMinimumHeight(300)  # Augmenté de 250 à 300
+        self.conversation_scroll.setMaximumHeight(450)  # Augmenté de 350 à 450
         self.conversation_widget = QWidget()
         self.conversation_layout = QVBoxLayout(self.conversation_widget)
         self.conversation_layout.setAlignment(Qt.AlignTop)
-        self.conversation_layout.setSpacing(15)
+        self.conversation_layout.setSpacing(20)  # Augmenté de 15 à 20
+        self.conversation_layout.setContentsMargins(15, 15, 15, 15)  # Marges intérieures
         self.conversation_scroll.setWidget(self.conversation_widget)
         layout.addWidget(self.conversation_scroll)
         
@@ -100,8 +88,8 @@ class AssistantView(QWidget):
         self.message_input.setPlaceholderText(
             "Posez votre question ici (max 8000 caractères)..."
         )
-        self.message_input.setMinimumHeight(100)
-        self.message_input.setMaximumHeight(150)
+        self.message_input.setMinimumHeight(60)  # Réduit de 100 à 60
+        self.message_input.setMaximumHeight(100)  # Réduit de 150 à 100
         self.char_counter = QLabel("0 / 8000")
         self.char_counter.setFont(QFont("Segoe UI", 9))
         self.message_input.textChanged.connect(self._update_char_counter)
@@ -192,13 +180,8 @@ class AssistantView(QWidget):
             self.show_error("Veuillez entrer un message")
             return
         
-        mode_map = {
-            "Comparer des offres": "compare",
-            "Conseil budget": "budget",
-            "Expliquer politique": "policy",
-            "Question libre": "free"
-        }
-        mode = mode_map[self.mode_selector.currentText()]
+        # Default mode (mode selector removed)
+        mode = "free"
         
         self.send_requested.emit(mode, message)
     
@@ -216,27 +199,32 @@ class AssistantView(QWidget):
         self.copy_btn.setEnabled(True)
     
     def _create_message_bubble(self, text: str, is_user: bool, model: str = None) -> QFrame:
-        """Create a message bubble"""
+        """Create a message bubble (AMÉLIORÉ avec gradients et ombres)"""
         bubble = QFrame()
-        bubble.setMaximumWidth(600)
+        bubble.setMaximumWidth(650)  # Augmenté de 600 à 650
         
         if is_user:
+            # Gradient bleu moderne avec ombre
             bubble.setStyleSheet("""
                 QFrame {
-                    background-color: #007bff;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #4dabf7, stop:1 #339af0);
                     color: white;
-                    border-radius: 15px;
-                    padding: 15px;
+                    border-radius: 18px;
+                    padding: 16px 20px;
+                    border: 2px solid #1c7ed6;
                 }
             """)
             bubble.setProperty("alignment", Qt.AlignRight)
         else:
+            # Design moderne pour les messages IA
             bubble.setStyleSheet("""
                 QFrame {
-                    background-color: #f1f3f5;
-                    color: #212529;
-                    border-radius: 15px;
-                    padding: 15px;
+                    background-color: #343a40;
+                    color: #f8f9fa;
+                    border-radius: 18px;
+                    padding: 16px 20px;
+                    border: 2px solid #495057;
                 }
             """)
             bubble.setProperty("alignment", Qt.AlignLeft)
@@ -244,25 +232,28 @@ class AssistantView(QWidget):
         bubble_layout = QVBoxLayout(bubble)
         bubble_layout.setSpacing(8)
         
-        # Message text
+        # Message text (sans emoji)
         message_label = QLabel(text)
         message_label.setWordWrap(True)
-        message_label.setFont(QFont("Segoe UI", 10))
+        message_label.setFont(QFont("Segoe UI", 11))
         if is_user:
-            message_label.setStyleSheet("color: white;")
+            message_label.setStyleSheet("color: white; line-height: 1.5;")
+        else:
+            message_label.setStyleSheet("color: #f8f9fa; line-height: 1.5;")
         bubble_layout.addWidget(message_label)
         
-        # Model info for AI messages
+        # Model info for AI messages (AMÉLIORÉ)
         if not is_user and model:
-            model_label = QLabel(f"Modèle: {model}")
-            model_label.setFont(QFont("Segoe UI", 8))
-            model_label.setStyleSheet("color: #6c757d; font-style: italic;")
+            model_label = QLabel(f"✨ {model}")
+            model_label.setFont(QFont("Segoe UI", 9))
+            model_label.setStyleSheet("color: #adb5bd; font-style: italic; margin-top: 4px;")
             bubble_layout.addWidget(model_label)
         
         # Wrapper for alignment
         wrapper = QWidget()
         wrapper_layout = QHBoxLayout(wrapper)
-        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setContentsMargins(10, 8, 10, 8)  # Marges pour espacer les messages
+        wrapper_layout.setSpacing(0)
         
         if is_user:
             wrapper_layout.addStretch()
@@ -300,7 +291,6 @@ class AssistantView(QWidget):
         self.loading_bar.setVisible(loading)
         self.send_btn.setEnabled(not loading)
         self.message_input.setEnabled(not loading)
-        self.mode_selector.setEnabled(not loading)
     
     def show_error(self, error: str):
         """Show error message"""
@@ -369,8 +359,8 @@ class AssistantView(QWidget):
                 background-color: #4dabf7;
                 color: white;
                 border: none;
-                border-radius: 8px;
-                padding: 10px 20px;
+                border-radius: 10px;
+                padding: 12px 24px;
                 font-size: 11pt;
                 font-weight: bold;
             }
@@ -386,6 +376,7 @@ class AssistantView(QWidget):
             }
             QPushButton#primary {
                 background-color: #51cf66;
+                border: 2px solid #37b24d;
             }
             QPushButton#primary:hover {
                 background-color: #40c057;
