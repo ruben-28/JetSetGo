@@ -16,7 +16,14 @@ from pydantic import BaseModel, Field, validator
 import uuid
 
 from app.db.event_store import get_event_store
-from app.cqrs.events.models import FlightBookedEvent, HotelBookedEvent, PackageBookedEvent, BookingCancelledEvent
+from app.cqrs.events.models import (
+    FlightBookedEvent, 
+    HotelBookedEvent, 
+    PackageBookedEvent, 
+    BookingCancelledEvent, 
+    TripCreatedEvent, 
+    ActivityBookedEvent
+)
 
 
 # ============================================================================
@@ -117,6 +124,12 @@ class BookPackageCommand(BaseModel):
     user_email: Optional[str] = None
     user_name: Optional[str] = None
     
+    # Activity fields (Optional)
+    activity_id: Optional[str] = None
+    activity_name: Optional[str] = None
+    activity_date: Optional[str] = None
+    activity_price: Optional[float] = None
+
     payment_method: Optional[str] = Field(default="credit_card")
     
     @validator('depart_date', 'return_date')
@@ -188,12 +201,24 @@ class BookingCommands:
         # 1. Validate command
         self._validate_booking_command(command)
         
-        # 2. Generate unique booking ID (aggregate ID)
+        # 2. Generate IDs
+        trip_id = str(uuid.uuid4())
         booking_id = str(uuid.uuid4())
         
-        # 3. Create domain event
+        # 3. Create Events
+        trip_event = TripCreatedEvent(
+            aggregate_id=trip_id,
+            trip_id=trip_id,
+            user_id=command.user_id,
+            name=f"Flight to {command.destination}",
+            total_price=command.price,
+            currency="EUR",
+            status="CONFIRMED"
+        )
+        
         event = FlightBookedEvent(
             aggregate_id=booking_id,
+            trip_id=trip_id,
             user_id=command.user_id,
             offer_id=command.offer_id,
             departure=command.departure,
@@ -204,6 +229,7 @@ class BookingCommands:
             adults=command.adults,
             data={
                 "booking_id": booking_id,
+                "trip_id": trip_id,
                 "user_id": command.user_id,
                 "user_email": command.user_email,
                 "user_name": command.user_name,
@@ -215,13 +241,14 @@ class BookingCommands:
                 "price": command.price,
                 "adults": command.adults,
                 "payment_method": command.payment_method,
-                "status": "confirmed",
+                "status": "CONFIRMED",
                 "created_at": datetime.utcnow().isoformat()
             }
         )
         
-        # 4. CRITICAL: Save event FIRST (Event Sourcing)
+        # 4. Save Event FIRST
         try:
+            await self.event_store.append(trip_event)
             await self.event_store.append(event)
         except Exception as e:
             raise HTTPException(
@@ -229,16 +256,15 @@ class BookingCommands:
                 detail=f"Failed to save booking event: {str(e)}"
             )
         
-        # 5. Apply state change (create booking in read model)
-        # Note: In a full Event Sourcing implementation, this would be handled
-        # by a separate event handler/projection. For now, we do it directly.
-        booking = await self._create_booking_record(booking_id, event)
+        # 5. Apply state change
+        await self._create_trip_record(trip_id, trip_event)
+        await self._create_booking_record(booking_id, event)
         
-        # 6. Return confirmation
         return {
             "booking_id": booking_id,
+            "trip_id": trip_id,
             "event_id": event.event_id,
-            "status": "confirmed",
+            "status": "CONFIRMED",
             "offer_id": command.offer_id,
             "departure": command.departure,
             "destination": command.destination,
@@ -247,7 +273,7 @@ class BookingCommands:
             "price": command.price,
             "adults": command.adults,
             "created_at": event.timestamp.isoformat(),
-            "message": "Flight booked successfully"
+            "message": "Flight booked successfully (Trip created)"
         }
     
     async def cancel_booking(self, command: CancelBookingCommand) -> Dict:
@@ -297,12 +323,24 @@ class BookingCommands:
         # 1. Validate
         self._validate_hotel_command(command)
         
-        # 2. Generate ID
+        # 2. Generate IDs
+        trip_id = str(uuid.uuid4())
         booking_id = str(uuid.uuid4())
         
-        # 3. Create Event
+        # 3. Create Events
+        trip_event = TripCreatedEvent(
+            aggregate_id=trip_id,
+            trip_id=trip_id,
+            user_id=command.user_id,
+            name=f"Hotel stay at {command.hotel_name}",
+            total_price=command.price,
+            currency="EUR",
+            status="CONFIRMED"
+        )
+        
         event = HotelBookedEvent(
             aggregate_id=booking_id,
+            trip_id=trip_id,
             user_id=command.user_id,
             hotel_name=command.hotel_name,
             hotel_city=command.hotel_city,
@@ -312,6 +350,7 @@ class BookingCommands:
             adults=command.adults,
             data={
                 "booking_id": booking_id,
+                "trip_id": trip_id,
                 "user_id": command.user_id,
                 "user_email": command.user_email,
                 "user_name": command.user_name,
@@ -322,34 +361,32 @@ class BookingCommands:
                 "price": command.price,
                 "adults": command.adults,
                 "payment_method": command.payment_method,
-                "status": "confirmed",
+                "status": "CONFIRMED",
                 "created_at": datetime.utcnow().isoformat()
             }
         )
         
-        # TODO: Implement Payment Gateway (e.g. Stripe)
-        # Verify payment here:
-        # await self.payment_gateway.charge(command.price, command.payment_method)
-        # If payment fails, raise HTTPException and do NOT append event.
-
         # 4. Save Event FIRST
-        await self.event_store.append(event)
+        try:
+            await self.event_store.append(trip_event)
+            await self.event_store.append(event)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
         
         # 5. Apply State Change
+        await self._create_trip_record(trip_id, trip_event)
         await self._create_booking_record(booking_id, event)
         
         return {
             "booking_id": booking_id,
+            "trip_id": trip_id,
             "event_id": event.event_id,
-            "status": "confirmed",
+            "status": "CONFIRMED",
             "hotel_name": command.hotel_name,
-            "hotel_city": command.hotel_city,
             "check_in": command.check_in,
-            "check_out": command.check_out,
             "price": command.price,
-            "adults": command.adults,
             "created_at": event.timestamp.isoformat(),
-            "message": "Hotel booked successfully"
+            "message": "Hotel booked successfully (Trip created)"
         }
 
     async def book_package(self, command: BookPackageCommand) -> Dict:
@@ -359,61 +396,121 @@ class BookingCommands:
         # 1. Validate
         self._validate_package_command(command)
         
-        # 2. Generate ID
-        booking_id = str(uuid.uuid4())
+        # 2. Generate IDs
+        trip_id = str(uuid.uuid4())
+        flight_booking_id = str(uuid.uuid4())
+        hotel_booking_id = str(uuid.uuid4())
+        activity_booking_id = str(uuid.uuid4()) if command.activity_id else None
         
-        # 3. Create Event
-        event = PackageBookedEvent(
-            aggregate_id=booking_id,
+        events_to_append = []
+        
+        # 3. Create Trip Event
+        trip_event = TripCreatedEvent(
+            aggregate_id=trip_id,
+            trip_id=trip_id,
+            user_id=command.user_id,
+            name=f"Trip to {command.destination}",
+            total_price=command.price, # Assumes price is total
+            currency="EUR",
+            status="CONFIRMED"
+        )
+        events_to_append.append(trip_event)
+        
+        # 4. Create Flight Event
+        flight_event = FlightBookedEvent(
+            aggregate_id=flight_booking_id,
+            trip_id=trip_id,
             user_id=command.user_id,
             offer_id=command.offer_id,
             departure=command.departure,
             destination=command.destination,
             depart_date=command.depart_date,
             return_date=command.return_date,
-            hotel_name=command.hotel_name,
-            hotel_city=command.hotel_city,
-            check_in=command.depart_date,  # Use depart_date as check_in
-            check_out=command.return_date if command.return_date else command.depart_date, # Use return_date as check_out
-            price=command.price,
+            price=0.0, # Price split logic simplified for now
             adults=command.adults,
             data={
-                "booking_id": booking_id,
+                "booking_id": flight_booking_id,
+                "trip_id": trip_id,
                 "user_id": command.user_id,
                 "offer_id": command.offer_id,
                 "departure": command.departure,
                 "destination": command.destination,
                 "depart_date": command.depart_date,
                 "return_date": command.return_date,
-                "hotel_name": command.hotel_name,
-                "hotel_city": command.hotel_city,
-                "price": command.price,
-                "adults": command.adults,
-                "payment_method": command.payment_method,
-                "status": "confirmed",
-                "created_at": datetime.utcnow().isoformat()
+                "price": 0.0,
+                "adults": command.adults
             }
         )
+        events_to_append.append(flight_event)
         
-        # TODO: Implement Payment Gateway (e.g. Stripe)
-        # Verify payment here:
-        # await self.payment_gateway.charge(command.price, command.payment_method)
-        # If payment fails, raise HTTPException and do NOT append event.
-
-        # 4. Save Event FIRST
-        await self.event_store.append(event)
+        # 5. Create Hotel Event
+        hotel_event = HotelBookedEvent(
+            aggregate_id=hotel_booking_id,
+            trip_id=trip_id,
+            user_id=command.user_id,
+            hotel_name=command.hotel_name,
+            hotel_city=command.hotel_city,
+            check_in=command.depart_date,
+            check_out=command.return_date if command.return_date else command.depart_date,
+            price=0.0,
+            adults=command.adults,
+            data={
+                "booking_id": hotel_booking_id,
+                "trip_id": trip_id,
+                "user_id": command.user_id,
+                "hotel_name": command.hotel_name,
+                "hotel_city": command.hotel_city,
+                "check_in": command.depart_date,
+                "check_out": command.return_date,
+                "price": 0.0,
+                "adults": command.adults
+            }
+        )
+        events_to_append.append(hotel_event)
         
-        # 5. Apply State Change
-        await self._create_booking_record(booking_id, event)
+        # 6. Create Activity Event (Optional)
+        activity_event = None
+        if command.activity_id:
+            activity_event = ActivityBookedEvent(
+                aggregate_id=activity_booking_id,
+                trip_id=trip_id,
+                user_id=command.user_id,
+                activity_name=command.activity_name or "Activity",
+                activity_date=command.activity_date or command.depart_date,
+                price=command.activity_price or 0.0,
+                data={
+                    "booking_id": activity_booking_id,
+                    "trip_id": trip_id,
+                    "user_id": command.user_id,
+                    "activity_name": command.activity_name,
+                    "activity_date": command.activity_date,
+                    "price": command.activity_price
+                }
+            )
+            events_to_append.append(activity_event)
         
+        # 7. Save Events
+        try:
+            for evt in events_to_append:
+                await self.event_store.append(evt)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+            
+        # 8. Apply State Changes
+        await self._create_trip_record(trip_id, trip_event)
+        await self._create_booking_record(flight_booking_id, flight_event)
+        await self._create_booking_record(hotel_booking_id, hotel_event)
+        if activity_event:
+            await self._create_booking_record(activity_booking_id, activity_event)
+            
         return {
-            "booking_id": booking_id,
-            "event_id": event.event_id,
-            "status": "confirmed",
-            "offer_id": command.offer_id,
-            "hotel_name": command.hotel_name,
+            "booking_id": trip_id, # Recurring Trip ID as main ref
+            "trip_id": trip_id,
+            "event_id": trip_event.event_id,
             "price": command.price,
-            "created_at": event.timestamp.isoformat(),
+            "adults": command.adults,
+            "created_at": trip_event.timestamp.isoformat(),
+            "status": "CONFIRMED",
             "message": "Package booked successfully"
         }
     
@@ -497,29 +594,67 @@ class BookingCommands:
     # State Application (Write Model)
     # ========================================================================
     
-    async def _create_booking_record(
-        self, 
-        booking_id: str, 
-        event: BaseModel # Can be any of the *BookedEvent types
-    ) -> Dict:
+    async def _create_trip_record(self, trip_id: str, event: TripCreatedEvent) -> Dict:
         """
-        Create booking record in database (apply state change to Read Model).
+        Create trip record in Read Model.
         """
         from app.auth.db import SessionLocal
-        from app.auth.models import Booking, BookingType
+        from app.auth.models import Trip
         
         session = SessionLocal()
         try:
+            trip = Trip(
+                id=trip_id,
+                user_id=event.user_id,
+                name=event.name,
+                total_price=event.total_price,
+                currency=event.currency,
+                status=event.status
+            )
+            session.add(trip)
+            session.commit()
+            return {"id": trip_id}
+        except Exception as e:
+            session.rollback()
+            print(f"Failed to create trip record: {e}")
+            raise e # Propagate error to reveal cause
+        finally:
+            session.close()
+
+    async def _create_booking_record(
+        self, 
+        booking_id: str, 
+        event: BaseModel 
+    ) -> Dict:
+        from app.auth.db import SessionLocal
+        from app.auth.models import Booking, BookingType, BookingStatus
+        
+        session = SessionLocal()
+        try:
+            # Extract price from event - check both direct attribute and data dict
+            event_price = getattr(event, "price", None)
+            if event_price is None and hasattr(event, "data") and isinstance(event.data, dict):
+                event_price = event.data.get("price", 0.0)
+            if event_price is None:
+                event_price = 0.0
+            
+            # Extract adults similarly
+            event_adults = getattr(event, "adults", None)
+            if event_adults is None and hasattr(event, "data") and isinstance(event.data, dict):
+                event_adults = event.data.get("adults", 1)
+            if event_adults is None:
+                event_adults = 1
+            
             booking_data = {
                 "id": booking_id,
+                "trip_id": getattr(event, "trip_id", None),
                 "user_id": event.user_id,
-                "price": event.price,
-                "adults": event.adults,
-                "status": "confirmed",
+                "price": float(event_price),  # Ensure it's a float
+                "adults": int(event_adults),  # Ensure it's an int
+                "status": BookingStatus.CONFIRMED,
                 "event_id": event.event_id,
             }
 
-            # Determine type and populate specific fields
             if event.event_type == "FlightBooked":
                 booking_data.update({
                     "booking_type": BookingType.FLIGHT,
@@ -536,60 +671,38 @@ class BookingCommands:
                     "hotel_city": event.hotel_city,
                     "check_in": event.check_in,
                     "check_out": event.check_out,
-                    # Don't set offer_id - hotels don't have offer IDs
-                    # SQLAlchemy will use NULL by not including the field
+                })
+            elif event.event_type == "ActivityBooked":
+                booking_data.update({
+                    "booking_type": BookingType.ACTIVITY,
+                    "activity_name": event.activity_name,
+                    "activity_date": event.activity_date,
                 })
             elif event.event_type == "PackageBooked":
-                booking_data.update({
+                # Legacy support or direct package mapping
+                 booking_data.update({
                     "booking_type": BookingType.PACKAGE,
-                    "offer_id": event.offer_id if hasattr(event, 'offer_id') else None,
+                    "offer_id": event.offer_id,
                     "departure": event.departure,
                     "destination": event.destination,
-                    "depart_date": event.depart_date,
-                    "return_date": event.return_date,
-                    "hotel_name": event.hotel_name,
-                    "hotel_city": event.hotel_city,
-                    "check_in": event.check_in,
-                    "check_out": event.check_out,
+                    "hotel_name": event.hotel_name
                 })
 
             booking = Booking(**booking_data)
-            
             session.add(booking)
             session.commit()
             session.refresh(booking)
             
-            return {
-                "id": booking.id,
-                "user_id": booking.user_id,
-                "booking_type": booking.booking_type,
-                "price": booking.price,
-                "offer_id": booking.offer_id,
-                "departure": booking.departure,
-                "destination": booking.destination,
-                "depart_date": booking.depart_date,
-                "return_date": booking.return_date,
-                "price": booking.price,
-                "adults": booking.adults,
-                "status": booking.status,
-                "created_at": booking.created_at,
-                "event_id": booking.event_id
-            }
+            return {"id": booking.id}
             
         except Exception as e:
             session.rollback()
             # CRITICAL: Read Model is out of sync with Event Store
-            # In production, this should trigger an immediate alert or a background reconciliation job.
-            # We raise an exception to inform the caller, even though the event is persisted.
             logger_msg = f"CRITICAL: Failed to persist booking {booking_id} to read model: {e}"
-            print(logger_msg) # Replace with logger.error(logger_msg)
-            
-            # Since the event is saved, the booking IS confirmed in the system of record.
-            # But the user won't see it in 'My Bookings'.
-            # We raise a 500 to indicate system inconsistency.
+            print(logger_msg)
             raise HTTPException(
                 status_code=500, 
-                detail=f"Booking confirmed but failed to update view. Reference: {booking_id}"
+                detail=f"Booking confirmed but failed to update view. Reference: {booking_id}. Error: {e}"
             )
         finally:
             session.close()

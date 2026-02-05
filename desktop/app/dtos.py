@@ -87,3 +87,26 @@ class BookingDTO:
             "price": self.price,
             "adults": self.adults
         }
+
+class PackageDTO:
+    """Dto for Package Search Results"""
+    def __init__(
+        self,
+        flights: list,
+        hotels: list,
+        activities: list,
+        metadata: dict
+    ):
+        self.flights = flights
+        self.hotels = hotels
+        self.activities = activities
+        self.metadata = metadata
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            flights=data.get("flights", []),
+            hotels=data.get("hotels", []),
+            activities=data.get("activities", []),
+            metadata=data.get("metadata", {})
+        )

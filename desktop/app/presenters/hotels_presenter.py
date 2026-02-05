@@ -13,14 +13,15 @@ class HotelsPresenter(QObject):
         self.api = api_client
         self.last_hotels = []
 
-        # Connect view signals to presenter methods
+        # Connect view signals
         self.view.search_btn.clicked.connect(self.on_search)
-        self.view.details_btn.clicked.connect(self.on_details)
-        self.view.book_btn.clicked.connect(self.on_book)
+        
+        # Set book handler for hotel cards
+        self.view.set_book_handler(self.on_book)
 
     def on_search(self):
         """Handle search button click for hotels"""
-        # Get IATA code from autocomplete widget (or text if not autocomplete)
+        # Get IATA code from autocomplete widget
         if hasattr(self.view.destination, 'get_iata_code'):
             destination = self.view.destination.get_iata_code()
         else:
@@ -37,6 +38,7 @@ class HotelsPresenter(QObject):
         self.view.set_status("🔄 Recherche d'hôtels en cours...")
         self.view.search_btn.setEnabled(False)
         self.view.search_btn.setText("⏳ Recherche...")
+        self.view.clear_results()
 
         # Call real API endpoint for hotels with IATA code
         self.api.get_hotels_async(
@@ -48,88 +50,58 @@ class HotelsPresenter(QObject):
     def _on_hotels_received(self, hotels):
         """Callback when hotels are successfully retrieved from API"""
         self.last_hotels = hotels
-        self.view.set_hotels(hotels)
-        self.view.set_status(f"✅ {len(hotels)} hôtel(s) trouvé(s)")
+        self.view.display_hotels(hotels)
         self.view.search_btn.setEnabled(True)
-        self.view.search_btn.setText("🔍 RECHERCHER DES HÔTELS")
+        self.view.search_btn.setText("🔍 Rechercher des Hôtels")
 
     def _on_search_error(self, error):
         """Callback when hotel search fails"""
         self.view.show_error(f"Erreur lors de la recherche: {str(error)}")
-        self.view.set_status("")
+        self.view.set_status("❌ Erreur de recherche")
         self.view.search_btn.setEnabled(True)
-        self.view.search_btn.setText("🔍 RECHERCHER DES HÔTELS")
+        self.view.search_btn.setText("🔍 Rechercher des Hôtels")
 
-    def on_details(self):
-        """Handle details button click"""
-        data = self.view.get_selected_hotel_data()
-        if not data:
-            self.view.show_error("Veuillez sélectionner un hôtel.")
-            return
-
-        QMessageBox.information(
-            self.view,
-            f"Détails {data['id']}",
-            f"Hôtel: {data['name']}\\n"
-            f"Prix: {data['price']}\\n\\n"
-            f"Équipements: WiFi, Piscine, Spa\\n"
-            f"Petit-déjeuner inclus\\n"
-            f"Parking gratuit"
-        )
-
-    def on_book(self):
-        """Handle book button click"""
-        data = self.view.get_selected_hotel_data()
-        if not data:
-            self.view.show_error("Veuillez sélectionner un hôtel.")
-            return
-
+    def on_book(self, hotel_data: dict):
+        """Handle book button click from hotel card"""
+        name = hotel_data.get("name", "N/A")
+        price = hotel_data.get("price", 0)
+        location = hotel_data.get("location", hotel_data.get("city", ""))
+        
         # Get check-in and check-out dates from view
         checkin = self.view.checkin_date.date().toString("yyyy-MM-dd")
         checkout = self.view.checkout_date.date().toString("yyyy-MM-dd")
 
         reply = QMessageBox.question(
             self.view,
-            "Confirmation de réservation",
-            f"Voulez-vous réserver cet hôtel ?\n\n"
-            f"Hôtel: {data['name']}\n"
-            f"Prix: {data['price']}\n"
-            f"Check-in: {checkin}\n"
-            f"Check-out: {checkout}",
+            "Confirmation",
+            f"Réserver cet hôtel pour {price:.2f} € ?\n\n"
+            f"🏨 Hôtel: {name}\n"
+            f"📍 Lieu: {location}\n"
+            f"📅 {checkin} - {checkout}",
             QMessageBox.Yes | QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
-            try:
-                # Parse price from table display format 
-                price_str = str(data['price']).replace("€", "").replace(",", ".").strip()
-                price = float(price_str)
-            except Exception as e:
-                print(f"Error parsing price: {e}")
-                self.view.show_error("Erreur lors de la lecture du prix.")
-                return
-
-            # Get IATA code from autocomplete widget (same as in on_search)
+            # Get IATA code from autocomplete widget
             if hasattr(self.view.destination, 'get_iata_code'):
                 hotel_city = self.view.destination.get_iata_code()
             else:
                 hotel_city = self.view.destination.text().strip()
 
-            # Prepare booking payload matching BookHotelCommand
+            # Prepare booking payload
             payload = {
-                "hotel_name": data['name'],
-                "hotel_city": hotel_city,  # Use IATA code, not display text
+                "hotel_name": name,
+                "hotel_city": hotel_city,
                 "check_in": checkin,
                 "check_out": checkout,
-                "price": price,
-                "adults": 1,  # Default to 1 adult (can be extended later)
+                "price": float(price),
+                "adults": 1,
                 "user_id": SESSION.user_id,
                 "user_name": SESSION.username
             }
 
             # Show loading state
             self.view.set_status("⏳ Réservation en cours...")
-            self.view.book_btn.setEnabled(False)
 
             # Call async booking API
             self.api.book_hotel_async(
@@ -141,18 +113,16 @@ class HotelsPresenter(QObject):
     def _on_book_success(self, result):
         """Callback for successful hotel booking"""
         self.view.set_status("✅ Hôtel réservé avec succès !")
-        self.view.book_btn.setEnabled(True)
         
         booking_id = result.get('booking_id', 'N/A')
         QMessageBox.information(
             self.view,
             "Réservation réussie",
-            f"Votre réservation d'hôtel a été confirmée avec succès !\\n\\n"
+            f"Votre réservation d'hôtel a été confirmée avec succès !\n\n"
             f"ID de réservation: {booking_id}"
         )
 
     def _on_book_error(self, error):
         """Callback for failed hotel booking"""
         self.view.set_status("❌ Erreur de réservation")
-        self.view.book_btn.setEnabled(True)
         self.view.show_error(f"Erreur lors de la réservation: {str(error)}")

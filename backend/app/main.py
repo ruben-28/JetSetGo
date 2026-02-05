@@ -44,7 +44,7 @@ app.add_middleware(
 # Database Initialization
 # ============================================================================
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 # ============================================================================
 # Router Registration
