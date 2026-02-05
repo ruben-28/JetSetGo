@@ -1,0 +1,8 @@
+Response Status: 200
+Response Body: {"flights":[],"hotels":[],"activities":[],"metadata":{"count_flights":0,"count_hotels":0}}
+
+Traceback (most recent call last):
+  File "C:\Users\ruben\Desktop\JetSetGo\backend\tests\test_packages_restored.py", line 69, in test_search_packages_flow
+    assert len(data["flights"]) > 0
+AssertionError: assert 0 > 0
+ +  where 0 = len([])

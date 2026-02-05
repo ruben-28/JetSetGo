@@ -230,7 +230,7 @@ class FlightQueries:
                     "booking_type": b.booking_type.value if hasattr(b.booking_type, 'value') else b.booking_type,
                     "price": b.price,
                     "adults": b.adults,
-                    "status": b.status,
+                    "status": b.status.value if hasattr(b.status, 'value') else b.status,
                     "created_at": b.created_at.isoformat() if b.created_at else None,
                     "event_id": b.event_id
                 }

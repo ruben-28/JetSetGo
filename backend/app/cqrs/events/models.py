@@ -29,17 +29,39 @@ class BaseEvent(BaseModel):
         }
 
 
+class TripCreatedEvent(BaseEvent):
+    """
+    Event raised when a new trip is created (container for bookings).
+    """
+    event_type: Literal["TripCreated"] = "TripCreated"
+    
+    trip_id: str
+    user_id: Optional[int]
+    name: str
+    total_price: float
+    currency: str
+    status: str
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        if not self.data:
+            self.data = {
+                "trip_id": self.trip_id,
+                "user_id": self.user_id,
+                "name": self.name,
+                "total_price": self.total_price,
+                "currency": self.currency,
+                "status": self.status
+            }
+
+
 class FlightBookedEvent(BaseEvent):
     """
     Event raised when a flight is successfully booked.
-    
-    This event captures all relevant information about the booking
-    at the time it was created. It serves as the source of truth
-    for reconstructing the booking state.
     """
     event_type: Literal["FlightBooked"] = "FlightBooked"
     
-    # Additional typed fields for better validation
+    trip_id: Optional[str] = None # Added trip_id
     user_id: Optional[int] = None
     offer_id: str
     departure: str
@@ -50,15 +72,10 @@ class FlightBookedEvent(BaseEvent):
     adults: int = 1
     
     def __init__(self, **data):
-        """
-        Initialize FlightBookedEvent.
-        
-        Automatically populates the data field with all booking information.
-        """
         super().__init__(**data)
-        # Ensure data dict contains all booking info
         if not self.data:
             self.data = {
+                "trip_id": self.trip_id,
                 "user_id": self.user_id,
                 "offer_id": self.offer_id,
                 "departure": self.departure,
@@ -76,6 +93,7 @@ class HotelBookedEvent(BaseEvent):
     """
     event_type: Literal["HotelBooked"] = "HotelBooked"
     
+    trip_id: Optional[str] = None
     user_id: Optional[int] = None
     hotel_name: str
     hotel_city: str
@@ -88,6 +106,7 @@ class HotelBookedEvent(BaseEvent):
         super().__init__(**data)
         if not self.data:
             self.data = {
+                "trip_id": self.trip_id,
                 "user_id": self.user_id,
                 "hotel_name": self.hotel_name,
                 "hotel_city": self.hotel_city,
@@ -98,12 +117,38 @@ class HotelBookedEvent(BaseEvent):
             }
 
 
+class ActivityBookedEvent(BaseEvent):
+    """
+    Event raised when an activity is successfully booked.
+    """
+    event_type: Literal["ActivityBooked"] = "ActivityBooked"
+    
+    trip_id: Optional[str] = None
+    user_id: Optional[int] = None
+    activity_name: str
+    activity_date: str
+    price: float
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        if not self.data:
+            self.data = {
+                "trip_id": self.trip_id,
+                "user_id": self.user_id,
+                "activity_name": self.activity_name,
+                "activity_date": self.activity_date,
+                "price": self.price
+            }
+
+
 class PackageBookedEvent(BaseEvent):
     """
     Event raised when a package (Flight + Hotel) is successfully booked.
+    Legacy/Combined event. Ideally decomposed into Trip + Bookings.
     """
     event_type: Literal["PackageBooked"] = "PackageBooked"
     
+    trip_id: Optional[str] = None
     user_id: Optional[int] = None
     offer_id: str
     departure: str
@@ -121,6 +166,7 @@ class PackageBookedEvent(BaseEvent):
         super().__init__(**data)
         if not self.data:
             self.data = {
+                "trip_id": self.trip_id,
                 "user_id": self.user_id,
                 "offer_id": self.offer_id,
                 "departure": self.departure,
