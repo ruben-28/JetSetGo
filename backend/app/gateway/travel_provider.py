@@ -1,9 +1,6 @@
-"""
-Travel Provider Module
-Intégration avec l'API Amadeus pour obtenir des vols réels.
-"""
-
+import asyncio
 import os
+
 import logging
 import re
 from typing import List, Dict, Optional
@@ -37,9 +34,13 @@ class TravelProvider:
     """
     
     def __init__(self):
-        self.api_key = os.getenv("AMADEUS_API_KEY")
-        self.api_secret = os.getenv("AMADEUS_API_SECRET")
-        self.client = None
+        self.api_key = os.getenv("AMADEUS_CLIENT_ID")
+        self.api_secret = os.getenv("AMADEUS_CLIENT_SECRET")
+        
+        # Initialize the supplementary service for airline lookups
+        # Import moved here to avoid circular dependency (TravelService -> TravelProvider -> AmadeusService -> TravelService)
+        from app.services.amadeus_service import AmadeusService
+        self.amadeus_service = AmadeusService()
 
         if self.api_key and self.api_secret:
             try:
@@ -166,7 +167,28 @@ class TravelProvider:
 
             response = self.client.shopping.flight_offers_search.get(**params)
             
-            parsed_flights = self._parse_flights(response.data, depart_date, return_date)
+            # Extract unique airline codes from all flights
+            flight_offers = response.data
+            unique_carriers = set()
+            for offer in flight_offers:
+                for itinerary in offer.get('itineraries', []):
+                    for segment in itinerary.get('segments', []):
+                         unique_carriers.add(segment.get('carrierCode'))
+            
+            # Fetch airline names concurrently
+            airline_map = {}
+            if unique_carriers:
+                 logger.info(f"Fetching airline names for codes: {unique_carriers}")
+                 # Use asyncio.gather to fetch all in parallel
+                 # Note: In a real high-throughput system you might want to batch this or handle errors individually
+                 tasks = []
+                 for code in unique_carriers:
+                      tasks.append(self._fetch_airline_safe(code))
+                 
+                 results = await asyncio.gather(*tasks)
+                 airline_map = {code: name for code, name in results if name}
+
+            parsed_flights = self._parse_flights(flight_offers, depart_date, return_date, airline_map)
             return parsed_flights
 
         except ResponseError as error:
@@ -176,7 +198,18 @@ class TravelProvider:
             logger.error(f"Erreur inattendue lors de la recherche: {e}")
             return []
 
-    def _parse_flights(self, offers: List, depart_date: str, return_date: Optional[str]) -> List[Dict]:
+    async def _fetch_airline_safe(self, code: str):
+         """Helper to fetch airline name safely without failing the whole request."""
+         try:
+              details = await self.amadeus_service.get_airline_by_code(code)
+              # Prioritize commonName, then businessName, then fallback to code
+              name = details.get('commonName') or details.get('businessName') or code
+              return (code, name)
+         except Exception as e:
+              logger.warning(f"Failed to fetch name for airline {code}: {e}")
+              return (code, code)  # Fallback to code if lookup fails
+
+    def _parse_flights(self, offers: List, depart_date: str, return_date: Optional[str], airline_map: Dict[str, str] = {}) -> List[Dict]:
         """Convertit la réponse Amadeus en format OfferOut."""
         results = []
         for offer in offers:
@@ -197,7 +230,7 @@ class TravelProvider:
                     "destination": last_segment['arrival']['iataCode'],
                     "depart_date": depart_date,
                     "return_date": return_date or "",
-                    "airline": self._get_airline_name(first_segment['carrierCode']),
+                    "airline": airline_map.get(first_segment['carrierCode']) or self._get_airline_name(first_segment['carrierCode']),
                     "price": price,
                     "duration_min": duration_min,
                     "stops": stops,
@@ -314,6 +347,14 @@ class TravelProvider:
             return []
         
         try:
+            # Extract IATA code if keyword is in format "CITY (CODE), COUNTRY"
+            # This handles cases where the frontend sends back a selected value
+            iata_match = re.search(r'\(([A-Z]{3})\)', keyword)
+            if iata_match:
+                # If we have a full selection like "PARIS (PAR), FRANCE", extract just the code
+                logger.info(f"Extracted IATA code from selection: {keyword} -> {iata_match.group(1)}")
+                keyword = iata_match.group(1)
+            
             logger.info(f"Recherche de villes/aéroports pour: '{keyword}'")
             
             # Appel Amadeus Location API

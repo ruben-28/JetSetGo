@@ -30,7 +30,7 @@ async def test_hotel_search():
         # Verifier que le client est initialise
         if not provider.client:
             print("[ERREUR] Client Amadeus non initialise.")
-            print("Verifiez que AMADEUS_API_KEY et AMADEUS_API_SECRET sont dans .env\n")
+            print("Verifiez que AMADEUS_CLIENT_ID et AMADEUS_CLIENT_SECRET sont dans .env\n")
             return
         
         print("[OK] Client Amadeus initialise\n")

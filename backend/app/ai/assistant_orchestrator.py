@@ -27,7 +27,6 @@ class AssistantOrchestrator:
     """
     
     def __init__(self):
-        self.ollama = OllamaGateway()
         self.travel_provider = TravelProvider()
     
     async def process_message(self, user_message: str, user_id: int) -> Dict:
@@ -205,12 +204,13 @@ class AssistantOrchestrator:
         ]
         
         try:
-            # Use existing Ollama gateway with proper lifecycle
-            async with self.ollama as gateway:
+            # Create a fresh OllamaGateway for each request to avoid
+            # client reuse issues (client is closed after context exit)
+            async with OllamaGateway() as gateway:
                 result = await gateway.chat_completion(
                     messages=messages,
                     temperature=0.7,
-                    max_tokens=700
+                    max_tokens=650
                 )
                 return result["content"]
         
