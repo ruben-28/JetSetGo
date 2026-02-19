@@ -5,30 +5,30 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate, Signal
 from PySide6.QtGui import QIcon
 from pathlib import Path
-from views.city_autocomplete import CityAutocompleteLineEdit
+from features.shared.city_autocomplete import CityAutocompleteLineEdit
 
 
-class PackageCard(QFrame):
-    """Modern card widget for displaying a package offer."""
+class HotelCard(QFrame):
+    """Modern card widget for displaying a hotel offer."""
     
-    book_clicked = Signal(dict)  # Emits package data when book button clicked
+    book_clicked = Signal(dict)  # Emits hotel data when book button clicked
     
-    def __init__(self, package: dict):
+    def __init__(self, hotel: dict):
         super().__init__()
-        self.package = package
-        self.setObjectName("packageCard")
+        self.hotel = hotel
+        self.setObjectName("hotelCard")
         
-        # Card styling with glassmorphism
+        # Card styling
         self.setStyleSheet("""
-            QFrame#packageCard {
+            QFrame#hotelCard {
                 background: rgba(220, 224, 228, 0.7);
                 border: 1px solid rgba(100, 100, 100, 0.15);
                 border-radius: 20px;
                 padding: 0px;
             }
-            QFrame#packageCard:hover {
+            QFrame#hotelCard:hover {
                 background: rgba(230, 234, 238, 0.9);
-                border: 1px solid rgba(0, 153, 255, 0.4);
+                border: 1px solid rgba(255, 107, 53, 0.4);
             }
         """)
         
@@ -37,12 +37,12 @@ class PackageCard(QFrame):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
         
-        # Header: Package badge
+        # Header: Hotel badge + Stars
         header = QHBoxLayout()
-        package_badge = QLabel("📦 PACKAGE COMPLET")
-        package_badge.setStyleSheet("""
+        hotel_badge = QLabel("🏨 HÔTEL")
+        hotel_badge.setStyleSheet("""
             background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                stop:0 #9333ea, stop:1 #a855f7);
+                stop:0 #ff6b35, stop:1 #ff8c42);
             color: white;
             padding: 8px 16px;
             border-radius: 10px;
@@ -50,40 +50,47 @@ class PackageCard(QFrame):
             font-size: 12px;
             letter-spacing: 0.5px;
         """)
-        header.addWidget(package_badge)
+        header.addWidget(hotel_badge)
+        
+        stars = hotel.get("stars", 3)
+        stars_label = QLabel("⭐" * stars)
+        stars_label.setStyleSheet("""
+            color: #fbbf24;
+            font-size: 16px;
+            background: transparent;
+        """)
+        header.addWidget(stars_label)
+        
         header.addStretch()
         layout.addLayout(header)
         
-        # Destination (large, prominent)
-        flight = package.get("flight", {})
-        hotel = package.get("hotel", {})
-        
-        destination = flight.get("destination", "Destination")
-        dest_label = QLabel(f"✈️ {destination}")
-        dest_label.setStyleSheet("""
-            color: #0077b6;
-            font-size: 24px;
+        # Hotel name (large, prominent)
+        name = hotel.get("name", "Hotel")
+        name_label = QLabel(name)
+        name_label.setStyleSheet("""
+            color: #ff6b35;
+            font-size: 22px;
             font-weight: 800;
             background: transparent;
         """)
-        layout.addWidget(dest_label)
+        name_label.setWordWrap(True)
+        layout.addWidget(name_label)
         
-        # Hotel name
-        hotel_name = hotel.get("name", "Hôtel")
-        hotel_label = QLabel(f"🏨 {hotel_name}")
-        hotel_label.setStyleSheet("""
-            color: #ff6b35;
-            font-size: 18px;
-            font-weight: 700;
+        # Location
+        location = hotel.get("location", hotel.get("city", ""))
+        location_label = QLabel(f"📍 {location}")
+        location_label.setStyleSheet("""
+            color: #24292f;
+            font-size: 15px;
+            font-weight: 600;
             background: transparent;
         """)
-        hotel_label.setWordWrap(True)
-        layout.addWidget(hotel_label)
+        layout.addWidget(location_label)
         
         # Divider
         divider = QFrame()
         divider.setFrameShape(QFrame.HLine)
-        divider.setStyleSheet("background: rgba(0, 119, 182, 0.2); max-height: 1px;")
+        divider.setStyleSheet("background: rgba(255, 107, 53, 0.2); max-height: 1px;")
         layout.addWidget(divider)
         
         # Details grid
@@ -91,32 +98,39 @@ class PackageCard(QFrame):
         details.setSpacing(12)
         details.setContentsMargins(0, 8, 0, 8)
         
-        # Flight details
-        departure = flight.get("departure", "")
-        depart_date = flight.get("depart_date", "")
-        return_date = flight.get("return_date", "")
-        airline = flight.get("airline", "")
+        rating = hotel.get("rating", 0)
+        self._add_detail_row(details, 0, "⭐ Note", f"{rating:.1f}/10")
         
-        self._add_detail_row(details, 0, "📍 Départ", f"{departure}")
-        self._add_detail_row(details, 1, "📅 Aller", depart_date)
-        self._add_detail_row(details, 2, "📅 Retour", return_date)
-        if airline:
-            self._add_detail_row(details, 3, "✈️ Compagnie", airline)
+        # Amenities (if available)
+        amenities = hotel.get("amenities", [])
+        if amenities:
+            amenities_text = ", ".join(amenities[:3])  # Show first 3
+            self._add_detail_row(details, 1, "✨ Services", amenities_text)
         
         layout.addLayout(details)
         
-        # Price section (prominent)
+        # Price section
         price_section = QHBoxLayout()
         
-        total_price = package.get("total_price", 0)
-        price_label = QLabel(f"{total_price:.2f} €")
+        price = hotel.get("price", 0)
+        price_label = QLabel(f"{price:.2f} €")
         price_label.setStyleSheet("""
-            color: #0077b6;
+            color: #ff6b35;
             font-size: 32px;
             font-weight: 800;
             background: transparent;
         """)
         price_section.addWidget(price_label)
+        
+        per_night = QLabel("/nuit")
+        per_night.setStyleSheet("""
+            color: #57606a;
+            font-size: 14px;
+            font-weight: 600;
+            background: transparent;
+            padding-top: 12px;
+        """)
+        price_section.addWidget(per_night)
         
         price_section.addStretch()
         
@@ -125,7 +139,7 @@ class PackageCard(QFrame):
         book_btn.setMinimumHeight(48)
         book_btn.setMinimumWidth(140)
         book_btn.setCursor(Qt.PointingHandCursor)
-        book_btn.clicked.connect(lambda: self.book_clicked.emit(self.package))
+        book_btn.clicked.connect(lambda: self.book_clicked.emit(self.hotel))
         price_section.addWidget(book_btn)
         
         layout.addLayout(price_section)
@@ -147,27 +161,27 @@ class PackageCard(QFrame):
             font-weight: 700;
             background: transparent;
         """)
+        value_widget.setWordWrap(True)
         
         grid.addWidget(label_widget, row, 0, Qt.AlignLeft)
         grid.addWidget(value_widget, row, 1, Qt.AlignRight)
 
 
-class PackagesView(QWidget):
+class HotelsView(QWidget):
     """
-    Modern Packages View - Shows combined hotel + flight packages
+    Modern Hotels View - Shows hotel search and results
     """
     # Signals for navigation
+    packages_requested = Signal()
     flights_requested = Signal()
-    hotels_requested = Signal()
     history_requested = Signal()
     assistant_requested = Signal()
     
     def __init__(self, api_client=None):
         super().__init__()
         self.api = api_client
-        self.setWindowTitle("JetSetGo - Packages")
+        self.setWindowTitle("JetSetGo - Hôtels")
         
-        # Try to set window icon
         icon_path = Path(__file__).parent.parent.parent / "assets" / "logo.jpg"
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
@@ -180,13 +194,10 @@ class PackagesView(QWidget):
         main_layout.setContentsMargins(30, 30, 30, 30)
         main_layout.setSpacing(25)
 
-        # ============================================
-        # HEADER WITH LOGO & NAVIGATION
-        # ============================================
+        # HEADER
         header = QHBoxLayout()
         header.setSpacing(20)
         
-        # Logo/Title
         logo_title = QLabel('JetSet<span style="color: #ff6b35;">Go</span>')
         logo_title.setObjectName("appTitle")
         logo_title.setTextFormat(Qt.RichText)
@@ -195,17 +206,17 @@ class PackagesView(QWidget):
         header.addStretch()
         
         # Navigation buttons
+        self.packages_btn = QPushButton("📦 Packages")
+        self.packages_btn.setObjectName("iconButton")
+        self.packages_btn.setMinimumHeight(44)
+        self.packages_btn.setCursor(Qt.PointingHandCursor)
+        header.addWidget(self.packages_btn)
+        
         self.flights_btn = QPushButton("✈️ Vols")
         self.flights_btn.setObjectName("iconButton")
         self.flights_btn.setMinimumHeight(44)
         self.flights_btn.setCursor(Qt.PointingHandCursor)
         header.addWidget(self.flights_btn)
-        
-        self.hotels_btn = QPushButton("🏨 Hôtels")
-        self.hotels_btn.setObjectName("iconButton")
-        self.hotels_btn.setMinimumHeight(44)
-        self.hotels_btn.setCursor(Qt.PointingHandCursor)
-        header.addWidget(self.hotels_btn)
         
         self.history_btn = QPushButton("🎫 Mes Voyages")
         self.history_btn.setObjectName("iconButton")
@@ -219,63 +230,47 @@ class PackagesView(QWidget):
         self.ai_btn.setCursor(Qt.PointingHandCursor)
         header.addWidget(self.ai_btn)
         
-        # Connect navigation buttons to signals
+        # Connect navigation
+        self.packages_btn.clicked.connect(self.packages_requested.emit)
         self.flights_btn.clicked.connect(self.flights_requested.emit)
-        self.hotels_btn.clicked.connect(self.hotels_requested.emit)
         self.history_btn.clicked.connect(self.history_requested.emit)
         self.ai_btn.clicked.connect(self.assistant_requested.emit)
         
         main_layout.addLayout(header)
 
-        # ============================================
-        # SEARCH PANEL (MODERN GLASSMORPHISM)
-        # ============================================
+        # SEARCH PANEL
         search_frame = QFrame()
         search_frame.setObjectName("searchPanel")
         search_layout = QVBoxLayout(search_frame)
         search_layout.setContentsMargins(24, 24, 24, 24)
         search_layout.setSpacing(20)
 
-        # Search title
-        search_title = QLabel("🌍 Rechercher un Package Complet")
+        search_title = QLabel("🏨 Rechercher un Hôtel")
         search_title.setStyleSheet("""
-            color: #0077b6; 
+            color: #ff6b35; 
             font-size: 22px; 
             font-weight: 700;
             background: transparent;
         """)
         search_layout.addWidget(search_title)
 
-        # Form grid (2 rows)
+        # Form grid
         form_grid = QGridLayout()
         form_grid.setSpacing(16)
         
-        # Row 1: Origin & Destination
-        origin_label = QLabel("Départ")
-        origin_label.setStyleSheet("color: #57606a; font-weight: 600; font-size: 13px; background: transparent;")
-        form_grid.addWidget(origin_label, 0, 0)
-        
-        if self.api:
-            self.origin = CityAutocompleteLineEdit(self.api)
-            self.origin.setPlaceholderText("Paris, London, NYC...")
-        else:
-            self.origin = QLineEdit()
-            self.origin.setPlaceholderText("Ville de départ")
-        self.origin.setMinimumHeight(50)
-        form_grid.addWidget(self.origin, 1, 0)
-        
+        # Row 1: Destination
         dest_label = QLabel("Destination")
         dest_label.setStyleSheet("color: #57606a; font-weight: 600; font-size: 13px; background: transparent;")
-        form_grid.addWidget(dest_label, 0, 1)
+        form_grid.addWidget(dest_label, 0, 0, 1, 2)
         
         if self.api:
             self.destination = CityAutocompleteLineEdit(self.api)
-            self.destination.setPlaceholderText("Tokyo, Dubai, Barcelona...")
+            self.destination.setPlaceholderText("Paris, Tokyo, New York...")
         else:
             self.destination = QLineEdit()
-            self.destination.setPlaceholderText("Ville de destination")
+            self.destination.setPlaceholderText("Ville / Destination")
         self.destination.setMinimumHeight(50)
-        form_grid.addWidget(self.destination, 1, 1)
+        form_grid.addWidget(self.destination, 1, 0, 1, 2)
         
         # Row 2: Dates
         checkin_label = QLabel("Date d'arrivée")
@@ -302,8 +297,8 @@ class PackagesView(QWidget):
         
         search_layout.addLayout(form_grid)
         
-        # Search button (full width, prominent)
-        self.search_btn = QPushButton("🔍 Rechercher des Packages")
+        # Search button
+        self.search_btn = QPushButton("🔍 Rechercher des Hôtels")
         self.search_btn.setMinimumHeight(56)
         self.search_btn.setCursor(Qt.PointingHandCursor)
         self.search_btn.setStyleSheet("""
@@ -317,27 +312,22 @@ class PackagesView(QWidget):
         
         main_layout.addWidget(search_frame)
 
-        # ============================================
-        # STATUS & RESULTS SECTION
-        # ============================================
-        
-        # Status label
+        # STATUS & RESULTS
         self.status = QLabel("")
         self.status.setStyleSheet("""
-            color: #0077b6;
+            color: #ff6b35;
             font-size: 16px;
             font-weight: 600;
             background: transparent;
         """)
         main_layout.addWidget(self.status)
         
-        # Scroll area for package cards
+        # Scroll area for cards
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
         
-        # Container for cards
         self.cards_container = QWidget()
         self.cards_layout = QVBoxLayout(self.cards_container)
         self.cards_layout.setSpacing(20)
@@ -360,24 +350,22 @@ class PackagesView(QWidget):
         QMessageBox.information(self, "Succès", message)
 
     def clear_results(self):
-        """Clear all package cards."""
-        while self.cards_layout.count() > 1:  # Keep the stretch
+        """Clear all hotel cards."""
+        while self.cards_layout.count() > 1:
             item = self.cards_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-    def display_packages(self, packages: list):
-        """Display package results as cards."""
+    def display_hotels(self, hotels: list):
+        """Display hotel results as cards."""
         self.clear_results()
         
-        if packages:
-            # Create grid for cards (2 columns)
+        if hotels:
             grid = QGridLayout()
             grid.setSpacing(20)
             
-            for idx, package in enumerate(packages):
-                card = PackageCard(package)
-                # Connect book signal to presenter
+            for idx, hotel in enumerate(hotels):
+                card = HotelCard(hotel)
                 if hasattr(self, '_book_handler'):
                     card.book_clicked.connect(self._book_handler)
                 
@@ -386,10 +374,9 @@ class PackagesView(QWidget):
                 grid.addWidget(card, row, col)
             
             self.cards_layout.insertLayout(0, grid)
-            self.set_status(f"✨ {len(packages)} package(s) trouvé(s)")
+            self.set_status(f"✨ {len(hotels)} hôtel(s) trouvé(s)")
         else:
-            # Empty state
-            empty_label = QLabel("Aucun package trouvé pour ces critères")
+            empty_label = QLabel("Aucun hôtel trouvé pour ces critères")
             empty_label.setStyleSheet("""
                 color: #57606a;
                 font-size: 18px;
@@ -399,8 +386,13 @@ class PackagesView(QWidget):
             """)
             empty_label.setAlignment(Qt.AlignCenter)
             self.cards_layout.insertWidget(0, empty_label)
-            self.set_status("0 package trouvé")
+            self.set_status("0 hôtel trouvé")
     
     def set_book_handler(self, handler):
         """Set the handler for book button clicks."""
         self._book_handler = handler
+    
+    # Legacy methods for backward compatibility
+    def set_hotels(self, hotels: list):
+        """Legacy method - redirects to display_hotels."""
+        self.display_hotels(hotels)

@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate, Signal
 from PySide6.QtGui import QIcon
 from pathlib import Path
-from views.city_autocomplete import CityAutocompleteLineEdit
+from features.shared.city_autocomplete import CityAutocompleteLineEdit
 
 
 class FlightCard(QFrame):

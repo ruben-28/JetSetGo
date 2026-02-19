@@ -1,0 +1,18 @@
+fastapi
+uvicorn
+pydantic
+sqlalchemy
+pyside6
+httpx
+python-dotenv
+requests
+python-multipart
+# Database drivers (assuming async pg or similar based on cloud db requirements, but adding generic for now)
+asyncpg
+greenlet
+# AI / ML
+huggingface_hub
+openai
+# Testing
+pytest
+pytest-asyncio

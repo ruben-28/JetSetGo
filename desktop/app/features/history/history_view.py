@@ -7,33 +7,43 @@ from PySide6.QtGui import QIcon
 from pathlib import Path
 from datetime import datetime
 
-# --- Matplotlib (Qt Canvas) ---
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-
-plt.style.use("dark_background")
+# --- QtCharts ---
+from PySide6.QtCharts import (
+    QChart, QChartView, QBarSet, QBarSeries, QBarCategoryAxis,
+    QValueAxis, QPieSeries, QPieSlice
+)
+from PySide6.QtGui import QPainter, QColor, QFont, QPen, QBrush
 
 
 class SpendingChart(QWidget):
-    """Widget affichant les dépenses de l'année en cours (Jan-Déc)."""
+    """Widget affichant les dépenses de l'année en cours (Jan-Déc) avec QtCharts."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        self.figure = Figure(figsize=(6, 3), dpi=100, facecolor="#00000000")
-        self.canvas = FigureCanvas(self.figure)
-        self.canvas.setStyleSheet("background: transparent;")
-        self.layout.addWidget(self.canvas)
+        # Création du graphique
+        self.chart = QChart()
+        self.chart.setAnimationOptions(QChart.SeriesAnimations)
+        self.chart.setBackgroundVisible(False)  # Fond transparent
+        self.chart.legend().setVisible(False)
+        self.chart.layout().setContentsMargins(0, 0, 0, 0)
 
-        self.ax = self.figure.add_subplot(111)
-        self.ax.patch.set_alpha(0)
-        self.ax.set_facecolor("none")
+        # Vue du graphique
+        self.chart_view = QChartView(self.chart)
+        self.chart_view.setRenderHint(QPainter.Antialiasing)
+        self.chart_view.setStyleSheet("background: transparent;")
+        
+        # Pour la transparence du widget QChartView
+        self.chart_view.setBackgroundBrush(QBrush(Qt.NoBrush))
+        
+        self.layout.addWidget(self.chart_view)
 
     def update_chart(self, bookings):
-        self.ax.clear()
+        self.chart.removeAllSeries()
+        for axis in self.chart.axes():
+            self.chart.removeAxis(axis)
 
         now = datetime.now()
         current_year = now.year
@@ -53,114 +63,123 @@ class SpendingChart(QWidget):
                     except ValueError:
                         continue
 
-        x_indices = range(12)
-        values = [monthly_totals[m] for m in range(1, 13)]
+        # Données
+        bar_set = QBarSet("Dépenses")
+        bar_set.setColor(QColor("#0077b6"))
+        bar_set.setBorderColor(QColor("#0077b6"))
+        bar_set.setLabelColor(QColor("#9333ea"))  # Couleur visible pour les sommes (violet)
+        bar_set.setLabelFont(QFont("Segoe UI", 8, QFont.Bold))
 
-        labels = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
-                  "Juil", "Août", "Sep", "Oct", "Nov", "Déc"]
+        for m in range(1, 13):
+            bar_set.append(monthly_totals[m])
 
-        colors = ["#0077b6"] * 12
+        series = QBarSeries()
+        series.append(bar_set)
+        
+        # Afficher les labels (valeurs) sur les barres
+        series.setLabelsVisible(True)
+        series.setLabelsFormat("@value €")
+        series.setLabelsPosition(QBarSeries.LabelsOutsideEnd)
 
-        bars = self.ax.bar(x_indices, values, color=colors, width=0.6, zorder=3)
+        self.chart.addSeries(series)
 
-        self.ax.spines["top"].set_visible(False)
-        self.ax.spines["right"].set_visible(False)
-        self.ax.spines["left"].set_visible(False)
-        self.ax.spines["bottom"].set_color("#404040")
+        # Axe X (Mois)
+        categories = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
+                      "Juil", "Août", "Sep", "Oct", "Nov", "Déc"]
+        axis_x = QBarCategoryAxis()
+        axis_x.append(categories)
+        axis_x.setGridLineVisible(False)
+        axis_x.setLinePen(QPen(QColor("#404040")))
+        axis_x.setLabelsColor(QColor("#aaaaaa"))
+        
+        self.chart.addAxis(axis_x, Qt.AlignBottom)
+        series.attachAxis(axis_x)
 
-        self.ax.yaxis.set_visible(False)
-        self.ax.grid(axis="y", color="white", alpha=0.05, linestyle="-", zorder=0)
-
-        self.ax.set_xticks(list(x_indices))
-        self.ax.set_xticklabels(labels, fontsize=9, color="#aaaaaa")
-        self.ax.tick_params(axis="x", colors="#404040", length=0)
-
-        max_val = max(values) if values and max(values) > 0 else 100
-        for bar, val in zip(bars, values):
-            if val > 0:
-                height = bar.get_height()
-                self.ax.text(
-                    bar.get_x() + bar.get_width() / 2,
-                    height + (max_val * 0.02),
-                    f"{int(val)}€",
-                    ha="center",
-                    va="bottom",
-                    fontsize=8,
-                    fontweight="bold",
-                    color="#57606a",
-                )
-
-        self.figure.tight_layout()
-        self.canvas.draw()
+        # Axe Y (Montant)
+        max_val = max(monthly_totals.values()) if monthly_totals and max(monthly_totals.values()) > 0 else 100
+        axis_y = QValueAxis()
+        axis_y.setRange(0, max_val * 1.1) # Un peu de marge en haut
+        axis_y.setLabelFormat("%d €")
+        axis_y.setVisible(False) # On cache l'axe Y pour faire propre comme avant
+        # Ou on peut le laisser visible mais styling minimal
+        # axis_y.setGridLineColor(QColor(255, 255, 255, 10))
+        
+        self.chart.addAxis(axis_y, Qt.AlignLeft)
+        series.attachAxis(axis_y)
 
 
 class BudgetChart(QWidget):
-    """Widget affichant la répartition du budget (donut chart)."""
+    """Widget affichant la répartition du budget (donut chart) avec QtCharts."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        self.figure = Figure(figsize=(5, 3), dpi=100, facecolor="#00000000")
-        self.canvas = FigureCanvas(self.figure)
-        self.canvas.setStyleSheet("background: transparent;")
-        self.layout.addWidget(self.canvas)
+        self.chart = QChart()
+        self.chart.setAnimationOptions(QChart.SeriesAnimations)
+        self.chart.setBackgroundVisible(False)
+        self.chart.layout().setContentsMargins(0, 0, 0, 0)
+        self.chart.legend().setVisible(False)
+        # self.chart.legend().setVisible(False) # Si on veut cacher la légende standard
 
-        self.ax = self.figure.add_subplot(111)
-        self.ax.axis("equal")
+        self.chart_view = QChartView(self.chart)
+        self.chart_view.setRenderHint(QPainter.Antialiasing)
+        self.chart_view.setStyleSheet("background: transparent;")
+        self.chart_view.setBackgroundBrush(QBrush(Qt.NoBrush))
+        
+        self.layout.addWidget(self.chart_view)
+        
+        # Label central pour le total (superposé)
+        self.center_label = QLabel(self)
+        self.center_label.setAlignment(Qt.AlignCenter)
+        self.center_label.setStyleSheet("color: black; font-weight: 700; font-size: 14px; background: transparent;")
+        self.center_label.setAttribute(Qt.WA_TransparentForMouseEvents)
+        
+    def resizeEvent(self, event):
+        # Repositionner le label central au redimensionnement
+        super().resizeEvent(event)
+        self.center_label.setGeometry(0, 0, self.width(), self.height())
 
     def update_chart(self, bookings):
-        self.ax.clear()
-
-        if not bookings:
-            self.canvas.draw()
-            return
-
+        self.chart.removeAllSeries()
+        
+        # Données
         categories = {"FLIGHT": 0, "HOTEL": 0, "PACKAGE": 0}
         labels_map = {"FLIGHT": "Vols", "HOTEL": "Hôtels", "PACKAGE": "Packages"}
         colors_map = {"FLIGHT": "#0077b6", "HOTEL": "#ff6b35", "PACKAGE": "#9333ea"}
 
         total_spent = 0
-        for b in bookings:
-            b_type = b.get("booking_type", "FLIGHT")
-            price = b.get("price", 0)
-            if b_type in categories:
-                categories[b_type] += price
-                total_spent += price
+        if bookings:
+            for b in bookings:
+                b_type = b.get("booking_type", "FLIGHT")
+                price = b.get("price", 0)
+                if b_type in categories:
+                    categories[b_type] += price
+                    total_spent += price
 
-        data, labels, colors = [], [], []
+        series = QPieSeries()
+        series.setHoleSize(0.60)
+        series.setPieSize(0.80)
+        
+        has_data = False
         for cat, amount in categories.items():
             if amount > 0:
-                data.append(amount)
-                labels.append(f"{labels_map[cat]}\n{amount:.0f}€")
-                colors.append(colors_map[cat])
+                has_data = True
+                slice_ = series.append(labels_map[cat], amount)
+                slice_.setColor(QColor(colors_map[cat]))
+                slice_.setLabelVisible(True)
+                slice_.setLabelColor(QColor("#24292f"))
+                slice_.setLabel(f"{labels_map[cat]} {amount:.0f}€")
 
-        if not data:
-            self.canvas.draw()
-            return
+        if not has_data:
+            # Afficher un donut vide ou rien
+            pass
 
-        wedges, texts, autotexts = self.ax.pie(
-            data,
-            labels=labels,
-            colors=colors,
-            autopct="%1.1f%%",
-            startangle=90,
-            pctdistance=0.85,
-            wedgeprops=dict(width=0.3, edgecolor="white", linewidth=1),
-        )
-
-        plt.setp(texts, color="black", fontweight="bold", fontsize=9)
-        plt.setp(autotexts, size=8, weight="bold", color="black")
-
-        self.ax.text(
-            0, 0,
-            f"Total\n{total_spent:.0f} €",
-            ha="center", va="center",
-            fontsize=12, color="black", fontweight="bold",
-        )
-
-        self.canvas.draw()
+        self.chart.addSeries(series)
+        
+        # Update center label
+        self.center_label.setText(f"Total\n{total_spent:.0f} €")
 
 
 class BookingCard(QFrame):

@@ -21,10 +21,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("JetSetGo - Assistant de Voyage")
         
         # Try to set window icon
+        # Try to set window icon
+        # features/shell/main_window.py -> ... -> assets/logo.jpg
         try:
-            self.setWindowIcon(QIcon("assets/logo.png"))
+            icon_path = Path(__file__).parent.parent.parent.parent / "assets" / "logo.jpg"
+            if icon_path.exists():
+                self.setWindowIcon(QIcon(str(icon_path)))
         except:
-            pass  # Icon optional
+            pass
         
         # Use QStackedWidget for view management
         self.stacked_widget = QStackedWidget()
@@ -40,8 +44,9 @@ class MainWindow(QMainWindow):
     def _load_stylesheet(self):
         """Load the premium theme stylesheet."""
         # Adjust path to find styles directory relative to this file
-        # views/main_window.py -> ../styles/premium_theme.qss
-        style_path = Path(__file__).parent.parent / "styles" / "premium_theme.qss"
+        # features/shell/main_window.py -> .../app/styles/premium_theme.qss
+        # features/shell -> features -> app
+        style_path = Path(__file__).parent.parent.parent / "styles" / "premium_theme.qss"
         if style_path.exists():
             with open(style_path, "r", encoding="utf-8") as f:
                 self.setStyleSheet(f.read())

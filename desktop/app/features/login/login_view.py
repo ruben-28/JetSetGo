@@ -11,8 +11,8 @@ class LoginView(QWidget):
         super().__init__()
         self.setWindowTitle("JetSetGo - Connexion")
         # Force window icon
-        # desktop/app/views/login_view.py -> desktop/assets/logo.jpg
-        icon_path = Path(__file__).parent.parent.parent / "assets" / "logo.jpg"
+        # desktop/app/features/login/login_view.py -> desktop/assets/logo.jpg
+        icon_path = Path(__file__).parent.parent.parent.parent / "assets" / "logo.jpg"
         if icon_path.exists():
             self.setWindowIcon(QIcon(str(icon_path)))
 
@@ -38,9 +38,9 @@ class LoginView(QWidget):
         logo = QLabel()
         from PySide6.QtGui import QPixmap
         import os
-        # desktop/app/views/login_view.py
-        # base (views) -> app -> desktop -> assets
-        base_dir = Path(__file__).parent.parent.parent
+        # desktop/app/features/login/login_view.py
+        # features/login -> features -> app -> desktop -> assets
+        base_dir = Path(__file__).parent.parent.parent.parent
         logo_path = base_dir / "assets" / "logo.jpg"
         pixmap = QPixmap(str(logo_path))
         
