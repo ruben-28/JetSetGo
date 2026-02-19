@@ -15,6 +15,7 @@ Flow:
 from typing import Dict, Optional, List
 import logging
 from app.gateway.ollama_gateway import OllamaGateway
+from app.gateway.huggingface_gateway import HuggingFaceGateway
 from app.gateway.travel_provider import TravelProvider
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ class AssistantOrchestrator:
         
         # Step 1: Analyze intent using simple keyword matching
         # TODO: Can be enhanced with HF zero-shot classification later
-        analysis = self._analyze_intent(user_message)
+        analysis = await self._analyze_intent(user_message)
         
         intent = analysis["intent"]
         entities = analysis["entities"]
@@ -64,6 +65,12 @@ class AssistantOrchestrator:
         elif intent == "package_search":
             return await self._handle_package_search(entities, user_message)
         
+        elif intent == "booking_history":
+            return await self._handle_booking_history(entities, user_message)
+            
+        elif intent == "budget_advice":
+            return await self._handle_budget_advice(entities, user_message)
+        
         elif intent == "inspiration":
             return await self._handle_inspiration(entities, user_message)
         
@@ -71,92 +78,92 @@ class AssistantOrchestrator:
             # General conversation
             return await self._handle_general_conversation(user_message)
     
-    def _analyze_intent(self, message: str) -> Dict:
+    async def _analyze_intent(self, message: str) -> Dict:
         """
-        Simple keyword-based intent detection.
-        Can be enhanced with HuggingFace models.
+        Analyze intent using Hybrid approach (HF Zero-Shot + Regex Fallback).
         """
-        message_lower = message.lower()
-        
-        # Detect intent (ORDER MATTERS - check inspiration FIRST to avoid conflicts)
-        # Inspiration has priority over package_search to handle "idée de voyage"
-        if any(word in message_lower for word in ["idée", "idees", "inspiration", "suggest", "recommand", "conseil", "propose"]):
-            intent = "inspiration"
-        elif any(word in message_lower for word in ["vol", "vols", "flight", "avion", "fly", "voler"]):
-            intent = "flight_search"
-        elif any(word in message_lower for word in ["hotel", "hôtel", "hébergement", "accommodation", "logement"]):
-            intent = "hotel_search"
-        elif any(word in message_lower for word in ["package", "packages", "voyage", "séjour", "trip", "vacances"]):
-            intent = "package_search"
-        else:
-            intent = "general"
-        
-        # Extract entities (simple approach)
-        entities = self._extract_entities(message)
+        # 1. Try Hugging Face Zero-Shot Classification
+        async with HuggingFaceGateway() as gateway:
+            # Candidates are now hardcoded in the Gateway
+            
+            result = await gateway.classify_intent(message)
+            
+            # Result format: {'intent': '...', 'confidence': 0.9}
+            # Threshold logic is already handled in the Gateway
+            intent = result["intent"]
+            confidence = result["confidence"]
+            
+            logger.info(f"Detected intent '{intent}' with confidence {confidence:.2f}")
+                
+        # 3. Extract entities (Hybrid: HF NER + Regex)
+        entities = await self._extract_entities(message)
         
         return {
             "intent": intent,
             "entities": entities
         }
     
-    def _extract_entities(self, message: str) -> Dict:
-        """Extract destination, dates, travelers, period, preferences using simple patterns."""
-        # List of major cities
-        cities = [
-            "Paris", "London", "New York", "Tokyo", "Rome", "Barcelona",
-            "Madrid", "Berlin", "Amsterdam", "Prague", "Vienna", "Budapest",
-            "Athens", "Istanbul", "Dubai", "Bangkok", "Singapore", "Sydney",
-            "Los Angeles", "Miami", "Toronto", "Montreal", "Cancun", "Marrakech"
-        ]
+    async def _extract_entities(self, message: str) -> Dict:
+        """
+        Hybrid Entity Extraction:
+        - LOC (Destination/Origin): Uses Hugging Face NER (xlm-roberta)
+        - DATES/TRAVELERS: Uses Regex (more reliable for structure)
+        """
+        # 1. Regex Extraction (Dates, Travelers, Budget, Preferences)
+        # We reuse the logic from the Gateway mock/helper which has good regex patterns
+        # Or implement it here. For clean separation, let's call the Gateway's helpers
+        # via a private method or just reimplement simple regex here.
+        # Let's keep it robust and simple here.
         
-        message_lower = message.lower()
+        # Date regex (manual for now to avoid dependency hell if dateparser missing)
+        import re
+        date_pattern = r"(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|demain|semaine prochaine|\d{1,2}[/-]\d{1,2})"
+        date_match = re.search(date_pattern, message.lower())
+        dates = {"raw": date_match.group(0)} if date_match else None
         
+        # 2. HF NER (for Locations)
         destination = None
-        for city in cities:
-            if city.lower() in message_lower:
-                destination = city
-                break
+        async with HuggingFaceGateway() as gateway:
+            entities_list = await gateway.extract_entities(message)
+            # Filter for LOC
+            locations = [e["word"] for e in entities_list if e.get("entity_group") == "LOC"]
+            if locations:
+                # Naive: take first location as destination
+                destination = locations[0]
         
-        # Extract period/month
-        months = {
-            "janvier": "janvier", "février": "février", "mars": "mars", "avril": "avril",
-            "mai": "mai", "juin": "juin", "juillet": "juillet", "août": "août",
-            "septembre": "septembre", "octobre": "octobre", "novembre": "novembre", "décembre": "décembre",
-            "january": "janvier", "february": "février", "march": "mars", "april": "avril",
-            "may": "mai", "june": "juin", "july": "juillet", "august": "août",
-            "september": "septembre", "october": "octobre", "november": "novembre", "december": "décembre"
-        }
-        
-        period = None
-        for month_key, month_val in months.items():
-            if month_key in message_lower:
-                period = month_val
-                break
-        
-        # Extract preferences
-        preferences = []
-        if any(word in message_lower for word in ["soleil", "sun", "plage", "beach", "chaud", "warm"]):
-            preferences.append("soleil/plage")
-        if any(word in message_lower for word in ["culture", "musée", "museum", "histoire", "history"]):
-            preferences.append("culture")
-        if any(word in message_lower for word in ["nature", "montagne", "mountain", "randonnée", "hiking"]):
-            preferences.append("nature")
-        if any(word in message_lower for word in ["aventure", "adventure", "sport"]):
-            preferences.append("aventure")
-        
+        # Fallback for destination if NER failed
+        if not destination:
+            # List of major cities (Fallback)
+            cities = [
+                "Paris", "London", "New York", "Tokyo", "Rome", "Barcelona",
+                "Madrid", "Berlin", "Amsterdam", "Prague", "Vienna", "Budapest",
+                "Athens", "Istanbul", "Dubai", "Bangkok", "Singapore", "Sydney",
+                "Los Angeles", "Miami", "Toronto", "Montreal", "Cancun", "Marrakech"
+            ]
+            for city in cities:
+                if city.lower() in message.lower():
+                    destination = city
+                    break
+
         return {
             "destination": destination,
-            "period": period,
-            "preferences": preferences,
-            "dates": None,  # Can be enhanced with date parsing
-            "travelers": None  # Can be enhanced
+            "period": dates["raw"] if dates else None, # Legacy compatibility
+            "preferences": [], # Can be enhanced later
+            "dates": dates,
+            "travelers": None 
         }
     
     async def _generate_ollama_response(self, prompt_type: str, context: Dict) -> str:
         """Generate natural language response using Ollama."""
         
         # Build messages for Ollama chat API
-        system_message = "Tu es un assistant de voyage intelligent et sympathique pour JetSetGo. Sois enthousiaste, mais reste équilibré et objectif, notamment concernant la sécurité et la situation politique."
+        # Explicitly enforce French language to avoid hallucinations/language mixing
+        system_message = (
+            "Tu es un assistant de voyage intelligent et sympathique pour JetSetGo. "
+            "Ta langue de sortie est STRICTEMENT le FRANÇAIS. "
+            "Même si l'utilisateur parle anglais ou une autre langue, tu dois répondre en français. "
+            "Sois enthousiaste, mais reste équilibré et objectif, notamment concernant la sécurité et la situation politique."
+        )
         
         if prompt_type == "navigate_to_flights":
             user_prompt = f"L'utilisateur veut chercher des vols pour {context.get('destination', 'une destination')}. Confirme que tu vas l'amener à la recherche de vols. Sois bref (1 phrase)."
@@ -186,7 +193,8 @@ class AssistantOrchestrator:
                 f"CONTEXTE: Il cherche des idées de voyage{period_text}{prefs_text}.\n\n"
                 f"INSTRUCTIONS :\n"
                 f"1. Si la demande concerne un pays spécifique ou demande un avis (ex: 'est-ce que X est dangereux ?', 'avis sur Y') :\n"
-                f"   - Donne une réponse, paragraphe par paragraphe, équilibrée et nuancée.\n"
+                f"   - Donne une réponse EN FRANÇAIS uniquement.\n"
+                f"   - Fais des paragraphes, sois équilibré et nuancé.\n"
                 f"   - Mentionne EXPLICITEMENT les risques sécurité/politique si nécessaire.\n"
                 f"   - NE PAS utiliser de format liste ni d'emojis.\n\n"
                 f"2. Sinon (si l'utilisateur veut juste des idées) :\n"
@@ -196,7 +204,7 @@ class AssistantOrchestrator:
             )
         
         else:  # general
-            user_prompt = f"L'utilisateur dit : '{context.get('message', '')}'\nRéponds de manière sympathique mais sans utiliser d'emojis. Si la question porte sur la sécurité ou un avis (ex: Iran, Corée du Nord...), sois nuancé et mentionne les risques éventuels. Sois bref."
+            user_prompt = f"L'utilisateur dit : '{context.get('message', '')}'\nRéponds EN FRANÇAIS. Sois sympathique mais sans utiliser d'emojis. Si la question porte sur la sécurité ou un avis (ex: Iran, Corée du Nord...), sois nuancé et mentionne les risques éventuels. Sois bref."
         
         messages = [
             {"role": "system", "content": system_message},
@@ -364,18 +372,49 @@ class AssistantOrchestrator:
             }
         }
     
-    async def _handle_general_conversation(self, user_message: str) -> Dict:
-        """Handle general conversation."""
+    async def _handle_booking_history(self, entities: Dict, user_message: str) -> Dict:
+        """Handle booking history intent."""
+        # Navigate to history view
+        response = await self._generate_ollama_response(
+            "general", # Generic confirmation
+            {"message": "Je vous affiche votre historique de réservations."}
+        )
+        return {
+            "action": "navigate",
+            "target_view": "history", # Assuming this view exists
+            "prefill_data": None,
+            "search_results": None,
+            "response_text": response,
+            "metadata": {"intent": "booking_history"}
+        }
+
+    async def _handle_budget_advice(self, entities: Dict, user_message: str) -> Dict:
+        """Handle budget advice intent."""
+        # Chat only for now
         response = await self._generate_ollama_response(
             "general",
-            {"message": user_message}
+            {"message": user_message} # Let Ollama handle the advice
         )
-        
         return {
             "action": "chat_only",
             "target_view": None,
             "prefill_data": None,
             "search_results": None,
             "response_text": response,
-            "metadata": {}
+            "metadata": {"intent": "budget_advice"}
+        }
+
+    async def _handle_general_conversation(self, user_message: str) -> Dict:
+        """Handle general conversation."""
+        response = await self._generate_ollama_response(
+            "general",
+            {"message": user_message}
+        )
+        return {
+            "action": "chat_only",
+            "target_view": None,
+            "prefill_data": None,
+            "search_results": None,
+            "response_text": response,
+            "metadata": {"intent": "general"}
         }

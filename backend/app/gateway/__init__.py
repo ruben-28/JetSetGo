@@ -11,10 +11,13 @@ from .base_gateway import (
     GatewayAPIError
 )
 from .travel_provider import TravelProvider
-from .hf_gateway import HFGateway
+from .huggingface_gateway import HuggingFaceGateway
 from .llm_provider import LLMProvider
 from .ollama_gateway import OllamaGateway
 from .openai_provider import OpenAIProvider
+
+# Alias for backward compatibility
+HFGateway = HuggingFaceGateway
 
 __all__ = [
     # Base classes
@@ -29,8 +32,13 @@ __all__ = [
     
     # Gateway implementations
     "TravelGateway",
+<<<<<<< HEAD
     "TravelProvider",
     "HFGateway",
+=======
+    "HuggingFaceGateway",
+    "HFGateway",  # Export alias
+>>>>>>> c1dbc83ffe7cd2825c0c5f8e87713612e61ac51b
     "OllamaGateway",
     "OpenAIProvider",
 ]

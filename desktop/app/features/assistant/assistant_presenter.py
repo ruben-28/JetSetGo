@@ -23,6 +23,7 @@ class AssistantPresenter(QObject):
     navigate_to_flights = Signal(dict)  # {destination, travelers}
     navigate_to_hotels = Signal(dict)   # {destination}
     navigate_to_packages = Signal(dict)  # {destination}
+    navigate_to_history = Signal(dict)   # {}
     
     def __init__(self, view, api_client):
         super().__init__()
@@ -74,6 +75,8 @@ class AssistantPresenter(QObject):
                 self.navigate_to_hotels.emit(prefill_data)
             elif target_view == "packages":
                 self.navigate_to_packages.emit(prefill_data)
+            elif target_view == "history":
+                self.navigate_to_history.emit(prefill_data)
     
     def on_success(self, response):
         """Handle successful LLM response"""

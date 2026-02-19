@@ -28,15 +28,21 @@ class OllamaGateway(BaseGateway, LLMProvider):
     """
     
     def _get_required_config_keys(self) -> list[str]:
-        """Required environment variables for Ollama"""
-        return ["OLLAMA_BASE_URL", "OLLAMA_MODEL"]
+        """Required environment variables for Ollama.
+        
+        Ollama runs locally and all config has sensible defaults,
+        so no keys are strictly required (unlike APIs needing secrets).
+        """
+        return []
     
     def _load_config(self) -> Dict[str, Any]:
         """Load Ollama-specific configuration"""
         config = super()._load_config()
         
-        # Override timeout for LLM requests (longer than default)
-        config["timeout"] = int(os.getenv("OLLAMA_TIMEOUT", "30"))
+        # LLM generation can be slow (especially cold starts) - give it enough time
+        # but only try once to avoid long cumulative waits on repeated timeouts
+        config["timeout"] = int(os.getenv("OLLAMA_TIMEOUT", "120"))
+        config["max_retries"] = 0  # Single attempt, no retries
         
         # Ollama-specific config
         config["OLLAMA_BASE_URL"] = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")

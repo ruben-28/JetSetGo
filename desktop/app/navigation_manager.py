@@ -97,6 +97,7 @@ class NavigationManager:
         self.assistant_presenter.navigate_to_flights.connect(self._navigate_to_flights)
         self.assistant_presenter.navigate_to_hotels.connect(self._navigate_to_hotels)
         self.assistant_presenter.navigate_to_packages.connect(self._navigate_to_packages)
+        self.assistant_presenter.navigate_to_history.connect(self._navigate_to_history)
         
         self.main_window.add_view("assistant", self.assistant_view)
     
@@ -115,6 +116,10 @@ class NavigationManager:
         """Navigate to packages view with prefilled data"""
         # TODO: Prefill destination in packages view
         self.main_window.switch_to_view("packages")
+
+    def _navigate_to_history(self, prefill_data: dict):
+        """Navigate to history view"""
+        self.main_window.switch_to_view("history")
     
     def start(self):
         """Start application"""
