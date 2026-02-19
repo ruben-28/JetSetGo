@@ -5,7 +5,7 @@ from services.session import SESSION
 
 class FlightsPresenter(QObject):
     """
-    Presenter for Flights View - handles business logic for flight searches
+    Présenteur pour la vue Vols - gère la logique métier pour la recherche de vols
     """
     def __init__(self, view, api_client):
         super().__init__()
@@ -13,15 +13,15 @@ class FlightsPresenter(QObject):
         self.api = api_client
         self.last_offers = []
 
-        # Connect view signals
+        # Connecter les signaux de la vue
         self.view.search_btn.clicked.connect(self.on_search)
         
-        # Set book handler for flight cards
+        # Définir le gestionnaire de réservation pour les cartes de vol
         self.view.set_book_handler(self.on_book)
 
     def on_search(self):
-        """Handle search button click - async flight search"""
-        # Get IATA codes from autocomplete widgets
+        """Gère le clic sur le bouton de recherche - recherche de vol asynchrone"""
+        # Récupérer les codes IATA depuis les widgets d'autocomplétion
         if hasattr(self.view.departure, 'get_iata_code'):
             departure = self.view.departure.get_iata_code()
         else:
@@ -39,13 +39,13 @@ class FlightsPresenter(QObject):
             self.view.show_error("Veuillez remplir la ville de départ et la destination.")
             return
 
-        # Show loading state
+        # Afficher l'état de chargement
         self.view.set_status("🔄 Recherche en cours...")
         self.view.search_btn.setEnabled(False)
         self.view.search_btn.setText("⏳ Recherche...")
         self.view.clear_results()
 
-        # Call async API with IATA codes
+        # Appel API asynchrone avec codes IATA
         self.api.search_travel_async(
             departure, dest, dep, ret, None, None,
             on_success=self._on_search_success,
@@ -53,21 +53,21 @@ class FlightsPresenter(QObject):
         )
 
     def _on_search_success(self, offers):
-        """Callback when search succeeds"""
+        """Callback lors du succès de la recherche"""
         self.last_offers = offers
         self.view.display_flights(offers)
         self.view.search_btn.setEnabled(True)
         self.view.search_btn.setText("🔍 Rechercher des Vols")
 
     def _on_search_error(self, error):
-        """Callback when search fails"""
+        """Callback lors de l'échec de la recherche"""
         self.view.show_error(str(error))
         self.view.set_status("❌ Erreur de recherche")
         self.view.search_btn.setEnabled(True)
         self.view.search_btn.setText("🔍 Rechercher des Vols")
 
     def on_book(self, flight_data: dict):
-        """Handle book button click from flight card"""
+        """Gère le clic sur le bouton réserver depuis une carte de vol"""
         airline = flight_data.get("airline", "N/A")
         price = flight_data.get("price", 0)
         departure = flight_data.get("departure", "")
@@ -105,7 +105,7 @@ class FlightsPresenter(QObject):
             )
 
     def _on_book_success(self, result):
-        """Callback for successful booking"""
+        """Callback pour une réservation réussie"""
         self.view.set_status("✅ Réservation confirmée !")
         QMessageBox.information(
             self.view, 
@@ -114,6 +114,6 @@ class FlightsPresenter(QObject):
         )
 
     def _on_book_error(self, error):
-        """Callback for failed booking"""
+        """Callback pour une réservation échouée"""
         self.view.set_status("❌ Erreur de réservation")
         self.view.show_error(f"Erreur lors de la réservation : {str(error)}")

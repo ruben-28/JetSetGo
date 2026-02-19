@@ -1,10 +1,11 @@
 """
-Travel Router Module
-HTTP endpoints for travel-related operations using CQRS pattern.
+Fichier: backend/app/travel/routes.py
+Objectif: Endpoints HTTP pour les opérations de voyage (Vols, Hôtels, Séjours).
+Architecture: Pattern CQRS (Command Query Responsibility Segregation).
 
-CQRS Pattern Implementation:
-- Query endpoints (GET) use FlightQueries for read operations
-- Command endpoints (POST) use BookingCommands for write operations
+Implémentation CQRS:
+- Requêtes (GET) -> FlightQueries / TripQueries (Lecture seule).
+- Commandes (POST) -> BookingCommands / SearchCommands (Écriture / Actions complexes).
 """
 
 from fastapi import APIRouter, Query, Depends, HTTPException
@@ -16,29 +17,27 @@ from app.services.travel_service import TravelService
 from app.cqrs import FlightQueries, BookingCommands
 from app.cqrs.commands.booking_commands import BookFlightCommand, BookHotelCommand, BookPackageCommand
 from app.cqrs.commands.search_commands import SearchCommands, SearchPackageCommand
-from app.cqrs.commands.search_commands import SearchCommands, SearchPackageCommand
 from app.cqrs.queries.trip_queries import TripQueries
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 
 
 # ============================================================================
-# Router Setup
+# Configuration du Routeur
 # ============================================================================
 
 router = APIRouter(prefix="/travel", tags=["travel"])
 
 
 # ============================================================================
-# Dependency Injection (CQRS Pattern)
+# Injection de Dépendances (Pattern CQRS)
 # ============================================================================
 
 async def get_flight_queries():
     """
-    Dependency factory for FlightQueries (CQRS Query side).
-    
-    Creates gateway and query handler instances with proper cleanup.
-    Used for all READ operations.
+    Factory pour FlightQueries (Côté Query CQRS).
+    Crée une instance de gateway et le gestionnaire de requêtes avec nettoyage approprié.
+    Utilisé pour toutes les opérations de LECTURE (READ).
     """
     async with TravelProvider() as gateway:
         yield FlightQueries(gateway)
@@ -46,30 +45,29 @@ async def get_flight_queries():
 
 async def get_booking_commands():
     """
-    Dependency factory for BookingCommands (CQRS Command side).
-    
-    Creates command handler instance.
-    Used for all WRITE operations.
+    Factory pour BookingCommands (Côté Command CQRS).
+    Crée le gestionnaire de commandes.
+    Utilisé pour toutes les opérations d'ÉCRITURE (WRITE).
     """
     yield BookingCommands()
 
 
 async def get_search_commands():
-    """Dependency factory for SearchCommands."""
+    """Factory de dépendance pour SearchCommands."""
     yield SearchCommands()
 
 
 async def get_trip_queries():
-    """Dependency factory for TripQueries."""
+    """Factory de dépendance pour TripQueries."""
     yield TripQueries()
 
 
 # ============================================================================
-# Response Models
+# Modèles de Réponse (Response Models)
 # ============================================================================
 
 class OfferOut(BaseModel):
-    """Flight offer response model"""
+    """Modèle de réponse pour une offre de vol."""
     id: str
     departure: str
     destination: str
@@ -85,7 +83,7 @@ class OfferOut(BaseModel):
 
 
 class OfferDetailsOut(BaseModel):
-    """Offer details response model"""
+    """Modèle de réponse pour les détails d'une offre."""
     id: str
     baggage: str
     refund_policy: str
@@ -95,9 +93,9 @@ class OfferDetailsOut(BaseModel):
 
 
 class BookingOut(BaseModel):
-    """Booking confirmation response model"""
+    """Modèle de confirmation de réservation."""
     booking_id: str
-    trip_id: Optional[str] = None  # Added for trip reference
+    trip_id: Optional[str] = None  # Ajouté pour référence voyage
     event_id: str
     status: str
     price: float
@@ -105,7 +103,7 @@ class BookingOut(BaseModel):
     created_at: str
     message: str
     
-    # Optional fields for different types
+    # Champs optionnels selon le type
     offer_id: Optional[str] = None
     departure: Optional[str] = None
     destination: Optional[str] = None
@@ -119,43 +117,43 @@ class BookingOut(BaseModel):
 
 
 class LocationOut(BaseModel):
-    """Location search response model"""
+    """Modèle de réponse pour la recherche de lieux."""
     name: str
     code: str
-    type: str  # CITY or AIRPORT
+    type: str  # CITY ou AIRPORT
     detail: str
 
 
 # ============================================================================
-# Query Endpoints (Read Operations - CQRS Query Side)
+# Endpoints de Requête (Opérations de Lecture - CQRS Query Side)
 # ============================================================================
 
 @router.get("/search", response_model=List[OfferOut])
 async def search(
-    departure: str = Query(..., min_length=2, description="Departure city/airport"),
-    destination: str = Query(..., min_length=2, description="Destination city/airport"),
-    depart_date: str = Query(..., description="Departure date (YYYY-MM-DD)"),
-    return_date: str = Query(..., description="Return date (YYYY-MM-DD)"),
-    budget: Optional[int] = Query(None, ge=0, description="Maximum budget"),
-    max_stops: Optional[int] = Query(None, ge=0, le=5, description="Max stops (0=direct, 1=max 1 stop, None=all)"),
+    departure: str = Query(..., min_length=2, description="Ville/Aéroport de départ"),
+    destination: str = Query(..., min_length=2, description="Ville/Aéroport de destination"),
+    depart_date: str = Query(..., description="Date de départ (YYYY-MM-DD)"),
+    return_date: str = Query(..., description="Date de retour (YYYY-MM-DD)"),
+    budget: Optional[int] = Query(None, ge=0, description="Budget maximum"),
+    max_stops: Optional[int] = Query(None, ge=0, le=5, description="Max escales (0=direct, 1=max 1 escale, None=tous)"),
     queries: FlightQueries = Depends(get_flight_queries)
 ):
     """
-    Search for flight offers (QUERY - Read operation).
+    Recherche d'offres de vol (QUERY - Lecture).
     
-    CQRS Pattern: This endpoint uses FlightQueries for read-only operations.
-    No state is modified, only data retrieval and filtering.
+    Pattern CQRS : Cet endpoint utilise FlightQueries pour les opérations en lecture seule.
+    Aucun modification d'état, seulement récupération et filtrage.
     
-    Query Parameters:
-    - departure: Departure city/airport IATA code (use /locations to find it)
-    - destination: Destination city/airport IATA code (use /locations to find it)
-    - depart_date: Departure date (YYYY-MM-DD)
-    - return_date: Return date (YYYY-MM-DD)
-    - budget: Maximum budget (optional)
-    - max_stops: Maximum number of stops (0 = direct only, 1 = max 1 stop, None = all flights)
+    Paramètres :
+    - departure : Code IATA départ
+    - destination : Code IATA destination
+    - depart_date : Date départ
+    - return_date : Date retour
+    - budget : Budget max (optionnel)
+    - max_stops : Nombre max d'escales
     
-    Returns:
-    - List of flight offers sorted by price
+    Retourne :
+    - Liste d'offres triées par prix.
     """
     try:
         offers = await queries.search_flights(
@@ -163,7 +161,7 @@ async def search(
             destination=destination,
             depart_date=depart_date,
             return_date=return_date,
-            adults=1,  # Default to 1 adult for backward compatibility
+            adults=1,  # Défaut à 1 pour compatibilité
             budget=budget,
             max_stops=max_stops
         )
@@ -171,7 +169,7 @@ async def search(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Échec de la recherche : {str(e)}")
 
 
 @router.get("/details/{offer_id}", response_model=OfferDetailsOut)
@@ -180,15 +178,7 @@ async def details(
     queries: FlightQueries = Depends(get_flight_queries)
 ):
     """
-    Get detailed information about a specific offer (QUERY - Read operation).
-    
-    CQRS Pattern: This endpoint uses FlightQueries for read-only operations.
-    
-    Path Parameters:
-    - offer_id: Unique offer identifier
-    
-    Returns:
-    - Detailed offer information
+    Obtenir les détails d'une offre spécifique (QUERY - Lecture).
     """
     try:
         details = await queries.get_offer_details(offer_id)
@@ -196,11 +186,11 @@ async def details(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get details: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Échec récupération détails : {str(e)}")
 
 
 # ============================================================================
-# Command Endpoints (Write Operations - CQRS Command Side)
+# Endpoints de Commande (Opérations d'Écriture - CQRS Command Side)
 # ============================================================================
 
 @router.post("/book")  # Removed response_model for consistency
@@ -210,62 +200,53 @@ async def book_flight(
     commands: BookingCommands = Depends(get_booking_commands)
 ):
     """
-    Book a flight (COMMAND - Write operation with Event Sourcing).
+    Réserver un vol (COMMAND - Écriture avec Event Sourcing).
     
-    CQRS Pattern: This endpoint uses BookingCommands for write operations.
-    
-    Event Sourcing Flow:
-    1. Validates the booking command
-    2. Generates FlightBookedEvent
-    3. Persists event to event store FIRST
-    4. Applies state change (creates booking)
-    5. Returns confirmation
-    
-    Request Body:
-    - BookFlightCommand with all booking details
-    
-    Returns:
-    - Booking confirmation with booking_id and event_id
+    Flux Event Sourcing :
+    1. Valide la commande de réservation.
+    2. Génère un FlightBookedEvent.
+    3. Persiste l'événement dans l'Events Store EN PREMIER.
+    4. Applique le changement d'état (crée le booking).
+    5. Retourne la confirmation.
     """
     try:
-        # Enforce user_id from token
+        # Force l'ID utilisateur depuis le token
         command.user_id = current_user.id
         result = await commands.book_flight(command)
         return result
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Booking failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Échec réservation vol : {str(e)}")
 
 
-@router.post("/book/hotel")  # Removed response_model temporarily for debugging
+@router.post("/book/hotel")
 async def book_hotel(
     command: BookHotelCommand,
     current_user: User = Depends(get_current_user),
     commands: BookingCommands = Depends(get_booking_commands)
 ):
     """
-    Book a hotel (COMMAND - Write operation).
+    Réserver un hôtel (COMMAND - Écriture).
     """
     try:
         command.user_id = current_user.id
         result = await commands.book_hotel(command)
-        # Return raw dict without Pydantic validation
         return result
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Hotel booking failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Échec réservation hôtel : {str(e)}")
 
 
-@router.post("/book/package")  # Removed response_model for consistency
+@router.post("/book/package")
 async def book_package(
     command: BookPackageCommand,
     current_user: User = Depends(get_current_user),
     commands: BookingCommands = Depends(get_booking_commands)
 ):
     """
-    Book a package (COMMAND - Write operation).
+    Réserver un package Vol + Hôtel (COMMAND - Écriture).
     """
     try:
         command.user_id = current_user.id
@@ -274,15 +255,15 @@ async def book_package(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Package booking failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Échec réservation package : {str(e)}")
 
 
 # ============================================================================
-# User Bookings Endpoint (Read Model Query)
+# Endpoint Mes Réservations (Read Model Query)
 # ============================================================================
 
 class UserBookingOut(BaseModel):
-    """User booking response model"""
+    """Modèle de réponse réservation utilisateur."""
     id: str
     booking_type: str
     price: float
@@ -305,48 +286,43 @@ class UserBookingOut(BaseModel):
     check_out: Optional[str] = None
 
 # ============================================================================
-# City/Airport Search Endpoint (for Autocomplete)
+# Recherche Villes/Aéroports (Autocomplete)
 # ============================================================================
 
 @router.get("/cities/search")
 async def search_cities(
-    keyword: str = Query(..., min_length=2, description="Search keyword (min 2 chars)"),
+    keyword: str = Query(..., min_length=2, description="Mot-clé (min 2 chars)"),
     queries: FlightQueries = Depends(get_flight_queries)
 ):
     """
-    Search for cities and airports (for autocomplete).
-    
-    Query Parameters:
-    - keyword: Search keyword (e.g., "Par" for Paris)
-    
-    Returns:
-    - List of matching cities/airports with IATA codes
+    Recherche de villes et aéroports (Autocomplete).
+    Utilisé pour obtenir les codes IATA.
     """
     try:
-        # Use FlightQueries gateway to access the search
+        # Utilise la gateway via FlightQueries
         async with TravelProvider() as gateway:
             results = await gateway.search_cities(keyword)
             return results
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"City search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Échec recherche ville : {str(e)}")
 
 
 # ============================================================================
-# New Endpoints for Packages and Hotels
+# Nouveaux Endpoints Packages et Hôtels
 # ============================================================================
 
 @router.get("/hotels")
 async def search_hotels(
-    city_code: str = Query(..., min_length=3, description="City IATA code or name")
+    city_code: str = Query(..., min_length=3, description="Code IATA ou nom ville")
 ):
     """
-    Search for hotels in a specific city.
+    Chercher des hôtels dans une ville spécifique.
     """
     try:
         service = TravelService()
         return await service.search_hotels(city_code)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Hotel search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Échec recherche hôtel : {str(e)}")
 
 
 @router.post("/packages/search")
@@ -355,12 +331,12 @@ async def search_packages_post(
     commands: SearchCommands = Depends(get_search_commands)
 ):
     """
-    Search for combined flight + hotel packages (command style).
+    Chercher des packages combinés Vol + Hôtel.
     """
     try:
         return await commands.search_packages(command)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Package search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Échec recherche package : {str(e)}")
 
 
 @router.get("/trips/me")
@@ -369,12 +345,12 @@ async def get_my_trips(
     queries: TripQueries = Depends(get_trip_queries)
 ):
     """
-    Get all trips for the current user.
+    Récupérer tous les voyages (dossiers) de l'utilisateur courant.
     """
     try:
         return queries.get_user_trips(current_user.id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get trips: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Échec récupération voyages : {str(e)}")
 
 
 @router.get("/trips/{trip_id}")
@@ -384,23 +360,18 @@ async def get_trip_details(
     queries: TripQueries = Depends(get_trip_queries)
 ):
     """
-    Get detailed trip information including all bookings.
+    Récupérer le détail d'un voyage (incluant toutes les réservations).
     """
     try:
         trip = queries.get_trip_details(trip_id, current_user.id)
         if not trip:
-            raise HTTPException(status_code=404, detail="Trip not found")
+            raise HTTPException(status_code=404, detail="Voyage non trouvé")
         return trip
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get trip details: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Échec récupération détails voyage : {str(e)}")
 
-
-# Redundant endpoints removed (autocomplete and repetitive search_hotels)
-
-
-# Removed imports (moved to top)
 
 @router.get("/my-bookings", response_model=List[UserBookingOut])
 async def get_my_bookings(
@@ -408,28 +379,25 @@ async def get_my_bookings(
     queries: FlightQueries = Depends(get_flight_queries)
 ):
     """
-    Get all bookings for the current logged-in user.
-    Uses JWT token authentication to identify the user.
+    Récupérer toutes les réservations de l'utilisateur connecté.
+    Utilise le token JWT pour identifier l'utilisateur.
     """
     try:
         return await queries.get_user_bookings(current_user.id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get bookings: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=f"Échec récupération réservations : {str(e)}")
 
 
 @router.get("/locations", response_model=List[LocationOut])
 async def get_locations(
-    keyword: str = Query(..., min_length=2, description="Search keyword (e.g. 'Lon', 'Par')")
+    keyword: str = Query(..., min_length=2, description="Mot-clé (ex: 'Lon', 'Par')")
 ):
     """
-    Autocomplete for airports and cities.
-    
-    Use this endpoint to get official IATA codes for the search endpoint.
+    Autocomplete pour aéroports et villes.
+    Utilisez ce endpoint pour obtenir les codes IATA officiels.
     """
     try:
         async with TravelProvider() as provider:
             return await provider.search_locations(keyword)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Location search failed: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=f"Échec recherche lieux : {str(e)}")

@@ -1,6 +1,6 @@
 """
-Event Store Implementation
-Handles persistence and retrieval of domain events for Event Sourcing.
+Implémentation Event Store
+Gère la persistance et la récupération des événements du domaine pour l'Event Sourcing.
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, create_engine
@@ -16,7 +16,7 @@ from app.cqrs.events.models import BaseEvent
 
 
 # ============================================================================
-# Database Setup
+# Configuration Base de Données
 # ============================================================================
 
 Base = declarative_base()
@@ -24,10 +24,10 @@ Base = declarative_base()
 
 class EventModel(Base):
     """
-    SQLAlchemy model for event storage.
+    Modèle SQLAlchemy pour le stockage des événements.
     
-    Stores all domain events in append-only fashion for event sourcing.
-    Each event represents a state change in the system.
+    Stocke tous les événements domaine en mode append-only pour l'event sourcing.
+    Chaque événement représente un changement d'état dans le système.
     """
     __tablename__ = "events"
     
@@ -36,65 +36,65 @@ class EventModel(Base):
     aggregate_id = Column(String(36), nullable=False, index=True)
     event_type = Column(String(100), nullable=False, index=True)
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
-    data = Column(NVARCHAR(None), nullable=False)  # JSON serialized event data (NVARCHAR(MAX) Unicode)
+    data = Column(NVARCHAR(None), nullable=False)  # Données événement sérialisées JSON (NVARCHAR(MAX) Unicode)
     version = Column(Integer, nullable=False, default=1)
 
 
 # ============================================================================
-# Event Store Class
+# Classe Event Store
 # ============================================================================
 
 class EventStore:
     """
-    Event Store for persisting and retrieving domain events.
+    Event Store pour persister et récupérer les événements domaine.
     
-    Responsibilities:
-    - Append new events to the store (append-only)
-    - Retrieve events by aggregate ID
-    - Retrieve all events (for rebuild/replay scenarios)
-    - Ensure events are immutable once stored
+    Responsabilités:
+    - Ajouter de nouveaux événements au store (append-only)
+    - Récupérer les événements par ID d'agrégat
+    - Récupérer tous les événements (pour scénarios de reconstruction/rejeu)
+    - Assurer l'immutabilité des événements une fois stockés
     """
     
     def __init__(self):
         """
-        Initialize Event Store with SQL Server connection.
+        Initialise l'Event Store avec une connexion SQL Server.
         
-        Uses centralized DATABASE_URL from app.db.config.
-        Both auth and event store share the same cloud database.
+        Utilise DATABASE_URL centralisé depuis app.db.config.
+        L'auth et l'event store partagent la même base de données cloud.
         """
         from app.db.config import DATABASE_URL
         
         self.engine = create_engine(
             DATABASE_URL,
-            echo=False,  # Set to True for debugging
-            pool_pre_ping=True,  # Verify connections before using them
-            pool_recycle=3600,  # Recycle connections after 1 hour
+            echo=False,  # Mettre à True pour le débogage
+            pool_pre_ping=True,  # Vérifier les connexions avant utilisation
+            pool_recycle=3600,  # Recycler les connexions après 1 heure
         )
         self.SessionLocal = sessionmaker(bind=self.engine)
         
-        # Create tables if they don't exist
+        # Créer les tables si elles n'existent pas
         Base.metadata.create_all(bind=self.engine)
     
     async def append(self, event: BaseEvent) -> None:
         """
-        Append a new event to the event store.
+        Ajouter un nouvel événement à l'event store.
         
-        Events are immutable and append-only. Once stored, they cannot be modified.
+        Les événements sont immuables et append-only. Une fois stockés, ils ne peuvent être modifiés.
         
         Args:
-            event: Domain event to store
+            event: Événement domaine à stocker
             
         Raises:
-            ValueError: If event with same event_id already exists
+            ValueError: Si un événement avec le même event_id existe déjà
         """
         session = self.SessionLocal()
         try:
-            # Check if event already exists (idempotency)
+            # Vérifier si l'événement existe déjà (idempotence)
             existing = session.query(EventModel).filter_by(event_id=event.event_id).first()
             if existing:
-                raise ValueError(f"Event with ID {event.event_id} already exists")
+                raise ValueError(f"L'événement avec ID {event.event_id} existe déjà")
             
-            # Create event model
+            # Créer le modèle d'événement
             event_model = EventModel(
                 event_id=event.event_id,
                 aggregate_id=event.aggregate_id,
@@ -115,16 +115,16 @@ class EventStore:
     
     async def get_by_aggregate(self, aggregate_id: str) -> List[BaseEvent]:
         """
-        Retrieve all events for a specific aggregate.
+        Récupérer tous les événements pour un agrégat spécifique.
         
-        Events are returned in chronological order (by timestamp).
-        This allows rebuilding the current state of an aggregate from its events.
+        Les événements sont retournés par ordre chronologique (par timestamp).
+        Cela permet de reconstruire l'état courant d'un agrégat depuis ses événements.
         
         Args:
-            aggregate_id: ID of the aggregate (e.g., booking_id)
+            aggregate_id: ID de l'agrégat (ex: booking_id)
             
         Returns:
-            List of events for the aggregate, ordered by timestamp
+            Liste des événements pour l'agrégat, ordonnés par timestamp
         """
         session = self.SessionLocal()
         try:
@@ -154,18 +154,18 @@ class EventStore:
     
     async def get_all(self, event_type: Optional[str] = None) -> List[BaseEvent]:
         """
-        Retrieve all events from the store.
+        Récupérer tous les événements du store.
         
-        Useful for:
-        - Rebuilding read models
-        - Event replay scenarios
-        - Audit and debugging
+        Utile pour:
+        - Reconstruire les modèles de lecture
+        - Scénarios de rejeu d'événements
+        - Audit et débogage
         
         Args:
-            event_type: Optional filter by event type
+            event_type: Filtre optionnel par type d'événement
             
         Returns:
-            List of all events, ordered by timestamp
+            Liste de tous les événements, ordonnés par timestamp
         """
         session = self.SessionLocal()
         try:
@@ -195,13 +195,13 @@ class EventStore:
     
     async def count_events(self, aggregate_id: Optional[str] = None) -> int:
         """
-        Count events in the store.
+        Compter les événements dans le store.
         
         Args:
-            aggregate_id: Optional filter by aggregate ID
+            aggregate_id: Filtre optionnel par ID d'agrégat
             
         Returns:
-            Number of events
+            Nombre d'événements
         """
         session = self.SessionLocal()
         try:
@@ -217,19 +217,19 @@ class EventStore:
 
 
 # ============================================================================
-# Global Event Store Instance
+# Instance Globale Event Store
 # ============================================================================
 
-# Singleton instance for application-wide use
+# Instance singleton pour utilisation à l'échelle de l'application
 _event_store_instance: Optional[EventStore] = None
 
 
 def get_event_store() -> EventStore:
     """
-    Get or create the global event store instance.
+    Obtenir ou créer l'instance globale de l'event store.
     
     Returns:
-        EventStore instance
+        Instance EventStore
     """
     global _event_store_instance
     

@@ -1,6 +1,6 @@
 """
-Services Module
-Exports all service classes for business logic.
+Module de Services
+Exporte toutes les classes de service pour la logique métier.
 """
 
 from .travel_service import TravelService

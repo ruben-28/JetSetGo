@@ -9,9 +9,9 @@ from features.shared.city_autocomplete import CityAutocompleteLineEdit
 
 
 class HotelCard(QFrame):
-    """Modern card widget for displaying a hotel offer."""
+    """Widget carte moderne pour afficher une offre d'hôtel."""
     
-    book_clicked = Signal(dict)  # Emits hotel data when book button clicked
+    book_clicked = Signal(dict)  # Émet les données de l'hôtel au clic sur réserver
     
     def __init__(self, hotel: dict):
         super().__init__()
@@ -145,7 +145,7 @@ class HotelCard(QFrame):
         layout.addLayout(price_section)
     
     def _add_detail_row(self, grid: QGridLayout, row: int, label: str, value: str):
-        """Add a detail row to the grid."""
+        """Ajoute une ligne de détail à la grille."""
         label_widget = QLabel(label)
         label_widget.setStyleSheet("""
             color: #57606a;
@@ -169,9 +169,9 @@ class HotelCard(QFrame):
 
 class HotelsView(QWidget):
     """
-    Modern Hotels View - Shows hotel search and results
+    Vue Hôtels Moderne - Affiche la recherche d'hôtels et les résultats
     """
-    # Signals for navigation
+    # Signaux pour la navigation
     packages_requested = Signal()
     flights_requested = Signal()
     history_requested = Signal()
@@ -338,26 +338,26 @@ class HotelsView(QWidget):
         main_layout.addWidget(scroll)
 
     def set_status(self, text: str):
-        """Set status message."""
+        """Définit le message de statut."""
         self.status.setText(text)
 
     def show_error(self, message: str):
-        """Show error dialog."""
+        """Affiche une boîte de dialogue d'erreur."""
         QMessageBox.critical(self, "Erreur", message)
     
     def show_success(self, message: str):
-        """Show success dialog."""
+        """Affiche une boîte de dialogue de succès."""
         QMessageBox.information(self, "Succès", message)
 
     def clear_results(self):
-        """Clear all hotel cards."""
+        """Efface toutes les cartes d'hôtels."""
         while self.cards_layout.count() > 1:
             item = self.cards_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
     def display_hotels(self, hotels: list):
-        """Display hotel results as cards."""
+        """Affiche les résultats d'hôtels sous forme de cartes."""
         self.clear_results()
         
         if hotels:
@@ -389,10 +389,10 @@ class HotelsView(QWidget):
             self.set_status("0 hôtel trouvé")
     
     def set_book_handler(self, handler):
-        """Set the handler for book button clicks."""
+        """Définit le gestionnaire pour les clics sur le bouton réserver."""
         self._book_handler = handler
     
     # Legacy methods for backward compatibility
     def set_hotels(self, hotels: list):
-        """Legacy method - redirects to display_hotels."""
+        """Méthode héritée - redirige vers display_hotels."""
         self.display_hotels(hotels)

@@ -34,7 +34,7 @@ class SearchPresenter(QObject):
         self.view.destination_completer.activated.connect(self._on_destination_selected)
 
     def _on_text_changed(self, field, text):
-        """Trigger debounce when text changes"""
+        """Déclenche le debounce lorsque le texte change"""
         if len(text) < 2:
             return
             
@@ -43,17 +43,17 @@ class SearchPresenter(QObject):
         self.debounce_timer.start()
 
     def _perform_autocomplete(self):
-        """Called by timer to execute search"""
+        """Appelé par le timer pour exécuter la recherche"""
         keyword = self._current_text
         # Call API
         self.api.get_autocomplete_async(
             keyword,
             on_success=lambda res: self._on_autocomplete_success(self._current_field_search, res),
-            on_error=lambda err: print(f"Autocomplete error: {err}")
+            on_error=lambda err: print(f"Erreur d'autocomplétion: {err}")
         )
 
     def _on_autocomplete_success(self, field, results):
-        """Update suggestions in view"""
+        """Met à jour les suggestions dans la vue"""
         labels = []
         for item in results:
             label = item['label']
@@ -64,26 +64,26 @@ class SearchPresenter(QObject):
         self.view.update_autocomplete_suggestions(field, labels)
         
     def _on_departure_selected(self, text):
-        """Store IATA code when user selects from list"""
+        """Stocke le code IATA lorsque l'utilisateur sélectionne dans la liste"""
         if text in self.suggestions_cache:
             self.origin_iata = self.suggestions_cache[text]
-            print(f"Selected Origin IATA: {self.origin_iata}")
+            print(f"Origine IATA sélectionnée: {self.origin_iata}")
 
     def _on_destination_selected(self, text):
-        """Store IATA code when user selects from list"""
+        """Stocke le code IATA lorsque l'utilisateur sélectionne dans la liste"""
         if text in self.suggestions_cache:
             self.destination_iata = self.suggestions_cache[text]
-            print(f"Selected Dest IATA: {self.destination_iata}")
+            print(f"Destination IATA sélectionnée: {self.destination_iata}")
 
     def on_search(self):
-        """Handle search button click - now async, won't freeze UI"""
-        # Prefer IATA codes if available from autocomplete selection
-        # Otherwise fall back to text, letting backend try to resolve
+        """Gère le clic sur le bouton de recherche - maintenant asynchrone, ne gèlera pas l'UI"""
+        # Préférer les codes IATA si disponibles depuis la sélection d'autocomplétion
+        # Sinon se rabattre sur le texte, laissant le backend essayer de résoudre
         departure = self.origin_iata if self.origin_iata else self.view.departure.text().strip()
         dest = self.destination_iata if self.destination_iata else self.view.destination.text().strip()
         
-        # If user typed "Paris" but didn't select from dropdown, backend handles it.
-        # But if they cleared text, reset IATA.
+        # Si l'utilisateur a tapé "Paris" mais n'a pas sélectionné, le backend gère.
+        # Mais s'ils ont effacé le texte, réinitialiser IATA.
         if not self.view.departure.text().strip(): 
             departure = ""
         if not self.view.destination.text().strip():
@@ -94,7 +94,7 @@ class SearchPresenter(QObject):
         bud_txt = self.view.budget.text().strip()
 
         if not departure or not dest:
-            self.view.show_error("Remplis ville de départ et destination.")
+            self.view.show_error("Veuillez remplir la ville de départ et la destination.")
             return
             
         # ... rest of search logic ...
@@ -121,7 +121,7 @@ class SearchPresenter(QObject):
         )
 
     def _on_search_success(self, offers):
-        """Callback when search succeeds"""
+        """Callback lors du succès de la recherche"""
         self.last_offers = offers
         self.view.set_offers(offers)
         self.view.set_status(f"✅ {len(offers)} offres trouvées")
@@ -129,15 +129,15 @@ class SearchPresenter(QObject):
         self.view.search_btn.setText("🔍 RECHERCHER DES VOLS")
 
     def _on_search_error(self, error):
-        """Callback when search fails"""
+        """Callback lors de l'échec de la recherche"""
         self.view.show_error(str(error))
         self.view.set_status("")
         self.view.search_btn.setEnabled(True)
         self.view.search_btn.setText("🔍 RECHERCHER DES VOLS")
 
     def on_details(self):
-        """Handle details button click - now async with visual locking"""
-        # Guard: prevent duplicate calls while loading
+        """Gère le clic sur le bouton détails - maintenant asynchrone avec verrouillage visuel"""
+        # Garde : empêcher les appels dupliqués pendant le chargement
         if hasattr(self, '_details_loading') and self._details_loading:
             return
         
@@ -168,7 +168,7 @@ class SearchPresenter(QObject):
         )
 
     def _show_details(self, offer_id, details):
-        """Show details dialog and restore button state"""
+        """Affiche la boîte de dialogue de détails et rétablit l'état du bouton"""
         # Reset loading state
         self._details_loading = False
         self.view.details_btn.setText("🔍 Voir détails")
@@ -183,7 +183,7 @@ class SearchPresenter(QObject):
         )
 
     def _on_details_error(self, error):
-        """Handle details error and restore button state"""
+        """Gère l'erreur de détails et rétablit l'état du bouton"""
         # Reset loading state
         self._details_loading = False
         self.view.details_btn.setText("🔍 Voir détails")
@@ -191,7 +191,7 @@ class SearchPresenter(QObject):
         self.view.show_error(str(error))
 
     def on_book(self):
-        """Handle book button click"""
+        """Gère le clic sur le bouton réserver"""
         # 1. Get selected data from view
         data = self.view.get_selected_flight_data()
         if not data:
@@ -219,7 +219,7 @@ class SearchPresenter(QObject):
                 price_str = data['price'].replace("€", "").replace(",", ".").strip()
                 price = float(price_str)
             except Exception as e:
-                print(f"Error parsing booking data: {e}")
+                print(f"Erreur d'analyse des données de réservation: {e}")
                 self.view.show_error("Erreur lors de la lecture des données du vol.")
                 return
 
@@ -248,7 +248,7 @@ class SearchPresenter(QObject):
             )
 
     def _on_book_success(self, result):
-        """Callback for successful booking"""
+        """Callback pour une réservation réussie"""
         self.view.set_status("✅ Réservation confirmée !")
         self.view.book_btn.setEnabled(True)
         QMessageBox.information(
@@ -258,7 +258,7 @@ class SearchPresenter(QObject):
         )
 
     def _on_book_error(self, error):
-        """Callback for failed booking"""
+        """Callback pour une réservation échouée"""
         self.view.set_status("❌ Erreur de réservation")
         self.view.book_btn.setEnabled(True)
         self.view.show_error(f"Erreur lors de la réservation : {str(error)}")

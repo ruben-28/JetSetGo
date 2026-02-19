@@ -1,12 +1,12 @@
 """
-Booking Commands Module
-Command handler for booking operations (write operations, CQRS Command side).
+Module de Commandes de Réservation (Booking Commands)
+Gestionnaire de commandes pour les opérations de réservation (Opérations d'écriture, côté Command CQRS).
 
-This module handles all WRITE operations for bookings. Each command:
-1. Validates the request
-2. Generates a domain event
-3. Persists the event FIRST (Event Sourcing)
-4. Applies state changes to the database
+Ce module gère toutes les opérations d'ÉCRITURE pour les réservations. Chaque commande :
+1. Valide la requête.
+2. Génère un événement métier.
+3. Persiste l'événement EN PREMIER (Event Sourcing).
+4. Applique les changements d'état à la base de données (Read Model).
 """
 
 from typing import Dict, Optional
@@ -27,49 +27,49 @@ from app.cqrs.events.models import (
 
 
 # ============================================================================
-# Command Models (Input DTOs)
+# Modèles de Commande (DTOs d'Entrée)
 # ============================================================================
 
 class BookFlightCommand(BaseModel):
     """
-    Command to book a flight.
+    Commande pour réserver un vol.
     
-    This represents the user's intent to create a booking.
+    Représente l'intention de l'utilisateur de créer une réservation.
     """
-    offer_id: str = Field(..., min_length=1, description="Unique offer identifier")
-    departure: str = Field(..., min_length=2, description="Departure city/airport")
-    destination: str = Field(..., min_length=2, description="Destination city/airport")
-    depart_date: str = Field(..., description="Departure date (YYYY-MM-DD)")
-    return_date: Optional[str] = Field(None, description="Return date (YYYY-MM-DD)")
-    price: float = Field(..., gt=0, description="Booking price")
-    adults: int = Field(default=1, ge=1, le=9, description="Number of adults")
+    offer_id: str = Field(..., min_length=1, description="Identifiant unique de l'offre")
+    departure: str = Field(..., min_length=2, description="Ville/Aéroport de départ")
+    destination: str = Field(..., min_length=2, description="Ville/Aéroport de destination")
+    depart_date: str = Field(..., description="Date de départ (YYYY-MM-DD)")
+    return_date: Optional[str] = Field(None, description="Date de retour (YYYY-MM-DD)")
+    price: float = Field(..., gt=0, description="Prix de la réservation")
+    adults: int = Field(default=1, ge=1, le=9, description="Nombre d'adultes")
     
-    # Optional user information (if authenticated)
+    # Informations utilisateur optionnelles (si authentifié)
     user_id: Optional[int] = None
     user_email: Optional[str] = None
     user_name: Optional[str] = None
     
-    # Payment information (placeholder for future implementation)
+    # Informations de paiement (placeholder pour implémentation future)
     payment_method: Optional[str] = Field(default="credit_card")
     
     @validator('depart_date', 'return_date')
     def validate_date_format(cls, v):
-        """Validate date format"""
+        """Valider le format de date."""
         if v:
             try:
                 datetime.strptime(v, "%Y-%m-%d")
             except ValueError:
-                raise ValueError("Date must be in YYYY-MM-DD format")
+                raise ValueError("La date doit être au format YYYY-MM-DD")
         return v
 
 
 class CancelBookingCommand(BaseModel):
     """
-    Command to cancel a booking.
+    Commande pour annuler une réservation.
     
-    Future implementation - prepared for cancellation feature.
+    Implémentation future - préparé pour la fonctionnalité d'annulation.
     """
-    booking_id: str = Field(..., description="Booking ID to cancel")
+    booking_id: str = Field(..., description="ID de la réservation à annuler")
     user_id: Optional[int] = None
 
     cancellation_reason: Optional[str] = None
@@ -77,16 +77,16 @@ class CancelBookingCommand(BaseModel):
 
 class BookHotelCommand(BaseModel):
     """
-    Command to book a hotel.
+    Commande pour réserver un hôtel.
     """
-    hotel_name: str = Field(..., min_length=2, description="Name of the hotel")
-    hotel_city: str = Field(..., min_length=2, description="City of the hotel")
-    check_in: str = Field(..., description="Check-in date (YYYY-MM-DD)")
-    check_out: str = Field(..., description="Check-out date (YYYY-MM-DD)")
-    price: float = Field(..., gt=0, description="Booking price")
-    adults: int = Field(default=1, ge=1, le=9, description="Number of adults")
+    hotel_name: str = Field(..., min_length=2, description="Nom de l'hôtel")
+    hotel_city: str = Field(..., min_length=2, description="Ville de l'hôtel")
+    check_in: str = Field(..., description="Date d'arrivée (YYYY-MM-DD)")
+    check_out: str = Field(..., description="Date de départ (YYYY-MM-DD)")
+    price: float = Field(..., gt=0, description="Prix de la réservation")
+    adults: int = Field(default=1, ge=1, le=9, description="Nombre d'adultes")
     
-    # Optional user information
+    # Informations utilisateur optionnelles
     user_id: Optional[int] = None
     user_email: Optional[str] = None
     user_name: Optional[str] = None
@@ -99,32 +99,32 @@ class BookHotelCommand(BaseModel):
             try:
                 datetime.strptime(v, "%Y-%m-%d")
             except ValueError:
-                raise ValueError("Date must be in YYYY-MM-DD format")
+                raise ValueError("La date doit être au format YYYY-MM-DD")
         return v
 
 
 class BookPackageCommand(BaseModel):
     """
-    Command to book a package (Flight + Hotel).
+    Commande pour réserver un package (Vol + Hôtel).
     """
-    offer_id: str = Field(..., min_length=1, description="Unique offer identifier for flight")
-    departure: str = Field(..., min_length=2, description="Departure city/airport")
-    destination: str = Field(..., min_length=2, description="Destination city/airport")
-    depart_date: str = Field(..., description="Departure/Check-in date (YYYY-MM-DD)")
-    return_date: Optional[str] = Field(None, description="Return/Check-out date (YYYY-MM-DD)")
+    offer_id: str = Field(..., min_length=1, description="Identifiant unique de l'offre de vol")
+    departure: str = Field(..., min_length=2, description="Ville/Aéroport de départ")
+    destination: str = Field(..., min_length=2, description="Ville/Aéroport de destination")
+    depart_date: str = Field(..., description="Date de départ/Check-in (YYYY-MM-DD)")
+    return_date: Optional[str] = Field(None, description="Date de retour/Check-out (YYYY-MM-DD)")
     
-    hotel_name: str = Field(..., min_length=2, description="Name of the hotel")
-    hotel_city: str = Field(..., min_length=2, description="City of the hotel")
+    hotel_name: str = Field(..., min_length=2, description="Nom de l'hôtel")
+    hotel_city: str = Field(..., min_length=2, description="Ville de l'hôtel")
     
-    price: float = Field(..., gt=0, description="Booking price")
-    adults: int = Field(default=1, ge=1, le=9, description="Number of adults")
+    price: float = Field(..., gt=0, description="Prix de la réservation")
+    adults: int = Field(default=1, ge=1, le=9, description="Nombre d'adultes")
     
-    # Optional user information
+    # Informations utilisateur optionnelles
     user_id: Optional[int] = None
     user_email: Optional[str] = None
     user_name: Optional[str] = None
     
-    # Activity fields (Optional)
+    # Champs Activité (Optionnel)
     activity_id: Optional[str] = None
     activity_name: Optional[str] = None
     activity_date: Optional[str] = None
@@ -138,74 +138,74 @@ class BookPackageCommand(BaseModel):
             try:
                 datetime.strptime(v, "%Y-%m-%d")
             except ValueError:
-                raise ValueError("Date must be in YYYY-MM-DD format")
+                raise ValueError("La date doit être au format YYYY-MM-DD")
         return v
 
 
 # ============================================================================
-# Command Handler
+# Gestionnaire de Commandes (Command Handler)
 # ============================================================================
 
 class BookingCommands:
     """
-    Command handler for booking-related write operations.
+    Gestionnaire de commandes pour les opérations d'écriture liées aux réservations.
     
-    CQRS Command Side - Responsibilities:
-    - Process booking commands (write operations)
-    - Validate command data
-    - Generate domain events
-    - Persist events FIRST (Event Sourcing pattern)
-    - Apply state changes to database
-    - Return command results
+    Côté Command CQRS - Responsabilités :
+    - Traiter les commandes de réservation (opérations d'écriture).
+    - Valider les données de la commande.
+    - Générer des événements de domaine.
+    - Persister les événements EN PREMIER (Pattern Event Sourcing).
+    - Appliquer les changements d'état à la base de données.
+    - Retourner les résultats de la commande.
     
-    Event Sourcing Pattern:
-    Each command follows the flow:
-    1. Validate command
-    2. Generate event
-    3. Save event to event store
-    4. Apply state change
-    5. Return result
+    Pattern Event Sourcing :
+    Chaque commande suit le flux :
+    1. Valider la commande
+    2. Générer l'événement
+    3. Sauvegarder l'événement dans l'Event Store
+    4. Appliquer le changement d'état
+    5. Retourner le résultat
     
-    This ensures events are the source of truth, and state changes
-    can always be reconstructed from events.
+    Cela garantit que les événements sont la source de vérité, et que l'état
+    peut toujours être reconstruit à partir des événements.
     """
     
     def __init__(self):
-        """Initialize command handler with event store."""
+        """Initialiser le gestionnaire avec l'Event Store."""
         self.event_store = get_event_store()
     
     # ========================================================================
-    # Public Command Methods
+    # Méthodes de Commande Publiques
     # ========================================================================
     
     async def book_flight(self, command: BookFlightCommand) -> Dict:
         """
-        Book a flight (WRITE operation with Event Sourcing).
+        Réserver un vol (Opération d'ÉCRITURE avec Event Sourcing).
         
-        Command Flow (Event Sourcing):
-        1. Validate the booking command
-        2. Generate FlightBookedEvent
-        3. Save event to event store FIRST
-        4. Apply state change (create booking record)
-        5. Return booking confirmation
+        Flux de la Commande (Event Sourcing) :
+        1. Valider la commande de réservation.
+        2. Générer FlightBookedEvent.
+        3. Sauvegarder l'événement dans l'Event Store EN PREMIER.
+        4. Appliquer le changement d'état (créer l'enregistrement de réservation).
+        5. Retourner la confirmation de réservation.
         
         Args:
-            command: BookFlightCommand with all booking details
+            command: BookFlightCommand avec tous les détails de la réservation.
         
         Returns:
-            Booking confirmation with booking_id and event_id
+            Confirmation de réservation avec booking_id et event_id.
         
         Raises:
-            HTTPException: On validation errors or booking failures
+            HTTPException: En cas d'erreur de validation ou d'échec de réservation.
         """
-        # 1. Validate command
+        # 1. Valider la commande
         self._validate_booking_command(command)
         
-        # 2. Generate IDs
+        # 2. Générer les IDs
         trip_id = str(uuid.uuid4())
         booking_id = str(uuid.uuid4())
         
-        # 3. Create Events
+        # 3. Créer les Événements
         trip_event = TripCreatedEvent(
             aggregate_id=trip_id,
             trip_id=trip_id,
@@ -246,17 +246,17 @@ class BookingCommands:
             }
         )
         
-        # 4. Save Event FIRST
+        # 4. Sauvegarder l'Événement EN PREMIER
         try:
             await self.event_store.append(trip_event)
             await self.event_store.append(event)
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to save booking event: {str(e)}"
+                detail=f"Échec de sauvegarde de l'événement de réservation : {str(e)}"
             )
         
-        # 5. Apply state change
+        # 5. Appliquer le changement d'état
         await self._create_trip_record(trip_id, trip_event)
         await self._create_booking_record(booking_id, event)
         
@@ -273,66 +273,66 @@ class BookingCommands:
             "price": command.price,
             "adults": command.adults,
             "created_at": event.timestamp.isoformat(),
-            "message": "Flight booked successfully (Trip created)"
+            "message": "Réservation de vol réussie (Voyage créé)"
         }
     
     async def cancel_booking(self, command: CancelBookingCommand) -> Dict:
         """
-        Cancel a booking (WRITE operation with Event Sourcing).
+        Annuler une réservation (Opération d'ÉCRITURE avec Event Sourcing).
         
-        Future implementation - prepared for cancellation feature.
+        Implémentation future - préparé pour la fonctionnalité d'annulation.
         
         Args:
-            command: CancelBookingCommand with cancellation details
+            command: CancelBookingCommand avec les détails de l'annulation.
         
         Returns:
-            Cancellation confirmation
+            Confirmation d'annulation.
         """
-        # 1. Validate command
+        # 1. Valider la commande
         if not command.booking_id:
             raise HTTPException(
                 status_code=400,
-                detail="Booking ID is required"
+                detail="Booking ID est requis"
             )
         
-        # 2. Create cancellation event
+        # 2. Créer l'événement d'annulation
         event = BookingCancelledEvent(
             aggregate_id=command.booking_id,
             booking_id=command.booking_id,
             cancellation_reason=command.cancellation_reason,
-            refund_amount=None  # To be implemented
+            refund_amount=None  # À implémenter
         )
         
-        # 3. Save event
+        # 3. Sauvegarder l'événement
         await self.event_store.append(event)
         
-        # 4. Apply state change (update booking status)
-        # To be implemented
+        # 4. Appliquer le changement d'état (mise à jour statut réservation)
+        # À implémenter
         
         return {
             "booking_id": command.booking_id,
             "event_id": event.event_id,
             "status": "cancelled",
-            "message": "Booking cancelled successfully"
+            "message": "Réservation annulée avec succès"
         }
 
     async def book_hotel(self, command: BookHotelCommand) -> Dict:
         """
-        Book a hotel (WRITE operation with Event Sourcing).
+        Réserver un hôtel (Opération d'ÉCRITURE avec Event Sourcing).
         """
-        # 1. Validate
+        # 1. Valider
         self._validate_hotel_command(command)
         
-        # 2. Generate IDs
+        # 2. Générer les IDs
         trip_id = str(uuid.uuid4())
         booking_id = str(uuid.uuid4())
         
-        # 3. Create Events
+        # 3. Créer les Événements
         trip_event = TripCreatedEvent(
             aggregate_id=trip_id,
             trip_id=trip_id,
             user_id=command.user_id,
-            name=f"Hotel stay at {command.hotel_name}",
+            name=f"Séjour à l'hôtel {command.hotel_name}",
             total_price=command.price,
             currency="EUR",
             status="CONFIRMED"
@@ -366,14 +366,14 @@ class BookingCommands:
             }
         )
         
-        # 4. Save Event FIRST
+        # 4. Sauvegarder l'Événement EN PREMIER
         try:
             await self.event_store.append(trip_event)
             await self.event_store.append(event)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
         
-        # 5. Apply State Change
+        # 5. Appliquer le changement d'état
         await self._create_trip_record(trip_id, trip_event)
         await self._create_booking_record(booking_id, event)
         
@@ -386,17 +386,17 @@ class BookingCommands:
             "check_in": command.check_in,
             "price": command.price,
             "created_at": event.timestamp.isoformat(),
-            "message": "Hotel booked successfully (Trip created)"
+            "message": "Hôtel réservé avec succès (Voyage créé)"
         }
 
     async def book_package(self, command: BookPackageCommand) -> Dict:
         """
-        Book a package (WRITE operation with Event Sourcing).
+        Réserver un package (Opération d'ÉCRITURE avec Event Sourcing).
         """
-        # 1. Validate
+        # 1. Valider
         self._validate_package_command(command)
         
-        # 2. Generate IDs
+        # 2. Générer les IDs
         trip_id = str(uuid.uuid4())
         flight_booking_id = str(uuid.uuid4())
         hotel_booking_id = str(uuid.uuid4())
@@ -404,19 +404,19 @@ class BookingCommands:
         
         events_to_append = []
         
-        # 3. Create Trip Event
+        # 3. Créer l'Événement Voyage
         trip_event = TripCreatedEvent(
             aggregate_id=trip_id,
             trip_id=trip_id,
             user_id=command.user_id,
-            name=f"Trip to {command.destination}",
-            total_price=command.price, # Assumes price is total
+            name=f"Voyage à {command.destination}",
+            total_price=command.price, # Suppose que le prix est total
             currency="EUR",
             status="CONFIRMED"
         )
         events_to_append.append(trip_event)
         
-        # 4. Create Flight Event
+        # 4. Créer l'Événement Vol
         flight_event = FlightBookedEvent(
             aggregate_id=flight_booking_id,
             trip_id=trip_id,
@@ -426,7 +426,7 @@ class BookingCommands:
             destination=command.destination,
             depart_date=command.depart_date,
             return_date=command.return_date,
-            price=0.0, # Price split logic simplified for now
+            price=0.0, # Logique de séparation des prix simplifiée pour l'instant
             adults=command.adults,
             data={
                 "booking_id": flight_booking_id,
@@ -443,7 +443,7 @@ class BookingCommands:
         )
         events_to_append.append(flight_event)
         
-        # 5. Create Hotel Event
+        # 5. Créer l'Événement Hôtel
         hotel_event = HotelBookedEvent(
             aggregate_id=hotel_booking_id,
             trip_id=trip_id,
@@ -468,14 +468,14 @@ class BookingCommands:
         )
         events_to_append.append(hotel_event)
         
-        # 6. Create Activity Event (Optional)
+        # 6. Créer l'Événement Activité (Optionnel)
         activity_event = None
         if command.activity_id:
             activity_event = ActivityBookedEvent(
                 aggregate_id=activity_booking_id,
                 trip_id=trip_id,
                 user_id=command.user_id,
-                activity_name=command.activity_name or "Activity",
+                activity_name=command.activity_name or "Activité",
                 activity_date=command.activity_date or command.depart_date,
                 price=command.activity_price or 0.0,
                 data={
@@ -489,14 +489,14 @@ class BookingCommands:
             )
             events_to_append.append(activity_event)
         
-        # 7. Save Events
+        # 7. Sauvegarder les Événements
         try:
             for evt in events_to_append:
                 await self.event_store.append(evt)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
             
-        # 8. Apply State Changes
+        # 8. Appliquer les Changements d'État
         await self._create_trip_record(trip_id, trip_event)
         await self._create_booking_record(flight_booking_id, flight_event)
         await self._create_booking_record(hotel_booking_id, hotel_event)
@@ -504,44 +504,44 @@ class BookingCommands:
             await self._create_booking_record(activity_booking_id, activity_event)
             
         return {
-            "booking_id": trip_id, # Recurring Trip ID as main ref
+            "booking_id": trip_id, # ID du voyage récurrent comme ref principale
             "trip_id": trip_id,
             "event_id": trip_event.event_id,
             "price": command.price,
             "adults": command.adults,
             "created_at": trip_event.timestamp.isoformat(),
             "status": "CONFIRMED",
-            "message": "Package booked successfully"
+            "message": "Package réservé avec succès"
         }
     
     # ========================================================================
-    # Validation Logic (Command Side)
+    # Logique de Validation (Côté Command)
     # ========================================================================
     
     def _validate_booking_command(self, command: BookFlightCommand):
         """
-        Validate booking command.
+        Valider la commande de réservation.
         
-        Business rules for booking:
-        - Offer ID must be valid
-        - Departure date must be in the future
-        - Return date must be after departure (if provided)
-        - Price must be positive
+        Règles métier :
+        - L'Offer ID doit être valide.
+        - La date de départ doit être dans le futur.
+        - La date de retour doit être après le départ (si fournie).
+        - Le prix doit être positif.
         """
-        # Validate dates
+        # Valider les dates
         try:
             depart = datetime.strptime(command.depart_date, "%Y-%m-%d")
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid departure date format"
+                detail="Format de date de départ invalide"
             )
         
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         if depart < today:
             raise HTTPException(
                 status_code=400,
-                detail="Cannot book flights in the past"
+                detail="Impossible de réserver des vols dans le passé"
             )
         
         if command.return_date:
@@ -550,19 +550,19 @@ class BookingCommands:
                 if return_dt <= depart:
                     raise HTTPException(
                         status_code=400,
-                        detail="Return date must be after departure date"
+                        detail="La date de retour doit être après la date de départ"
                     )
             except ValueError:
                 raise HTTPException(
                     status_code=400,
-                    detail="Invalid return date format"
+                    detail="Format de date de retour invalide"
                 )
         
-        # Validate price
+        # Valider le prix
         if command.price <= 0:
             raise HTTPException(
                 status_code=400,
-                detail="Price must be positive"
+                detail="Le prix doit être positif"
             )
 
     def _validate_hotel_command(self, command: BookHotelCommand):
@@ -570,33 +570,33 @@ class BookingCommands:
             check_in = datetime.strptime(command.check_in, "%Y-%m-%d")
             check_out = datetime.strptime(command.check_out, "%Y-%m-%d")
         except ValueError:
-             raise HTTPException(status_code=400, detail="Invalid date")
+             raise HTTPException(status_code=400, detail="Date invalide")
              
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         if check_in < today:
-             raise HTTPException(status_code=400, detail="Check-in must be in future")
+             raise HTTPException(status_code=400, detail="Le check-in doit être dans le futur")
         
         if check_out <= check_in:
-             raise HTTPException(status_code=400, detail="Check-out must be after check-in")
+             raise HTTPException(status_code=400, detail="Le check-out doit être après le check-in")
              
     def _validate_package_command(self, command: BookPackageCommand):
-        # Similar reuse of logic
+        # Réutilisation similaire de logique
         try:
             dep = datetime.strptime(command.depart_date, "%Y-%m-%d")
         except ValueError:
-             raise HTTPException(status_code=400, detail="Invalid date")
+             raise HTTPException(status_code=400, detail="Date invalide")
         
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         if dep < today:
-             raise HTTPException(status_code=400, detail="Departure in past")
+             raise HTTPException(status_code=400, detail="Départ dans le passé")
     
     # ========================================================================
-    # State Application (Write Model)
+    # Application d'État (Read Model)
     # ========================================================================
     
     async def _create_trip_record(self, trip_id: str, event: TripCreatedEvent) -> Dict:
         """
-        Create trip record in Read Model.
+        Créer l'enregistrement de voyage dans le Read Model.
         """
         from app.auth.db import SessionLocal
         from app.auth.models import Trip
@@ -616,8 +616,8 @@ class BookingCommands:
             return {"id": trip_id}
         except Exception as e:
             session.rollback()
-            print(f"Failed to create trip record: {e}")
-            raise e # Propagate error to reveal cause
+            print(f"Échec de création de l'enregistrement voyage : {e}")
+            raise e # Propager l'erreur pour révéler la cause
         finally:
             session.close()
 
@@ -631,14 +631,14 @@ class BookingCommands:
         
         session = SessionLocal()
         try:
-            # Extract price from event - check both direct attribute and data dict
+            # Extraire le prix de l'événement - vérifier attribut direct et dict data
             event_price = getattr(event, "price", None)
             if event_price is None and hasattr(event, "data") and isinstance(event.data, dict):
                 event_price = event.data.get("price", 0.0)
             if event_price is None:
                 event_price = 0.0
             
-            # Extract adults similarly
+            # Extraire adultes de la même façon
             event_adults = getattr(event, "adults", None)
             if event_adults is None and hasattr(event, "data") and isinstance(event.data, dict):
                 event_adults = event.data.get("adults", 1)
@@ -649,8 +649,8 @@ class BookingCommands:
                 "id": booking_id,
                 "trip_id": getattr(event, "trip_id", None),
                 "user_id": event.user_id,
-                "price": float(event_price),  # Ensure it's a float
-                "adults": int(event_adults),  # Ensure it's an int
+                "price": float(event_price),  # Assurer float
+                "adults": int(event_adults),  # Assurer int
                 "status": BookingStatus.CONFIRMED,
                 "event_id": event.event_id,
             }
@@ -679,7 +679,7 @@ class BookingCommands:
                     "activity_date": event.activity_date,
                 })
             elif event.event_type == "PackageBooked":
-                # Legacy support or direct package mapping
+                # Support Legacy ou mapping direct package
                  booking_data.update({
                     "booking_type": BookingType.PACKAGE,
                     "offer_id": event.offer_id,
@@ -697,13 +697,12 @@ class BookingCommands:
             
         except Exception as e:
             session.rollback()
-            # CRITICAL: Read Model is out of sync with Event Store
-            logger_msg = f"CRITICAL: Failed to persist booking {booking_id} to read model: {e}"
+            # CRITIQUE : Le Read Model est désynchronisé avec l'Event Store
+            logger_msg = f"CRITIQUE : Échec de persistance de réservation {booking_id} vers read model : {e}"
             print(logger_msg)
             raise HTTPException(
                 status_code=500, 
-                detail=f"Booking confirmed but failed to update view. Reference: {booking_id}. Error: {e}"
+                detail=f"Réservation confirmée mais échec mise à jour vue. Référence : {booking_id}. Erreur : {e}"
             )
         finally:
             session.close()
-

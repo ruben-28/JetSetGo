@@ -14,12 +14,12 @@ from pathlib import Path
 
 class AssistantView(QWidget):
     """
-    View for AI Assistant consultation.
+    Vue pour la consultation de l'Assistant IA.
     
-    Features:
-    - Premium UI matching generic theme
-    - Chat interface with bubbles
-    - Demo mode warning banner
+    Fonctionnalités :
+    - UI Premium correspondant au thème générique
+    - Interface de chat avec bulles
+    - Bannière d'avertissement pour le mode démo
     """
     
     # Signals
@@ -34,7 +34,7 @@ class AssistantView(QWidget):
         # No more _apply_styles() - rely on global premium_theme.qss
     
     def _setup_ui(self):
-        """Setup UI components"""
+        """Configuration des composants UI"""
         layout = QVBoxLayout(self)
         layout.setSpacing(20)
         layout.setContentsMargins(25, 25, 25, 25)
@@ -201,7 +201,7 @@ class AssistantView(QWidget):
         layout.addWidget(self.status_label)
 
     def _create_demo_banner(self) -> QFrame:
-        """Create demo mode warning banner"""
+        """Créer la bannière d'avertissement du mode démo"""
         banner = QFrame()
         banner.setVisible(False)
         banner.setStyleSheet("""
@@ -234,7 +234,7 @@ class AssistantView(QWidget):
         return banner
     
     def _create_message_bubble(self, text: str, is_user: bool, model: str = None) -> QFrame:
-        """Create a message bubble with premium styling"""
+        """Crée une bulle de message avec un style premium"""
         bubble = QFrame()
         bubble.setMaximumWidth(700)
         

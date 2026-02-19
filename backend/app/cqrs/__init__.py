@@ -1,11 +1,11 @@
 """
-CQRS Module
-Command Query Responsibility Segregation pattern implementation.
+Module CQRS (Command Query Responsibility Segregation)
+Implémentation du pattern de ségrégation des responsabilités Commande/Requête.
 
-This module provides a clear separation between:
-- Queries: Read operations (FlightQueries)
-- Commands: Write operations (BookingCommands)
-- Events: Domain events for Event Sourcing
+Ce module fournit une séparation claire entre :
+- Requêtes (Queries) : Opérations de lecture (FlightQueries).
+- Commandes (Commands) : Opérations d'écriture (BookingCommands).
+- Événements (Events) : Événements métier pour l'Event Sourcing.
 
 Usage:
     from app.cqrs import FlightQueries, BookingCommands
@@ -16,13 +16,13 @@ from .commands import BookingCommands
 from .events import BaseEvent, FlightBookedEvent, BookingCancelledEvent
 
 __all__ = [
-    # Query handlers
+    # Gestionnaires de Requêtes
     "FlightQueries",
     
-    # Command handlers
+    # Gestionnaires de Commandes
     "BookingCommands",
     
-    # Events
+    # Événements
     "BaseEvent",
     "FlightBookedEvent",
     "BookingCancelledEvent"

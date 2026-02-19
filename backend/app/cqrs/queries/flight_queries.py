@@ -1,9 +1,9 @@
 """
-Flight Queries Module
-Query handler for flight search operations (read-only, CQRS Query side).
+Module de Requêtes Vols (Flight Queries)
+Gestionnaire de requêtes pour les opérations de recherche de vols (Lecture seule, côté Query CQRS).
 
-This module handles all READ operations for flights. It does NOT modify
-any state in the system - it only retrieves and returns data.
+Ce module gère toutes les opérations de LECTURE pour les vols. Il ne modifie
+AUCUN état dans le système - il se contente de récupérer et retourner des données.
 """
 
 from typing import List, Dict, Optional
@@ -15,29 +15,29 @@ from app.gateway import TravelProvider
 
 class FlightQueries:
     """
-    Query handler for flight-related read operations.
+    Gestionnaire de requêtes pour les opérations liées aux vols.
     
-    CQRS Query Side - Responsibilities:
-    - Search flights (read-only)
-    - Get offer details (read-only)
-    - Validate query parameters
-    - Apply read-side business rules (filtering, sorting)
-    - NO STATE MODIFICATION
+    Côté Query CQRS - Responsabilités :
+    - Rechercher des vols (lecture seule).
+    - Obtenir les détails d'une offre (lecture seule).
+    - Valider les paramètres de requête.
+    - Appliquer les règles métier de lecture (filtrage, tri).
+    - AUCUNE MODIFICATION D'ÉTAT.
     
-    This class focuses purely on data retrieval and query optimization.
+    Cette classe se concentre uniquement sur la récupération de données et l'optimisation des requêtes.
     """
     
     def __init__(self, gateway: TravelProvider):
         """
-        Initialize query handler with gateway dependency.
+        Initialise le gestionnaire avec la dépendance gateway.
         
         Args:
-            gateway: TravelProvider instance for external API calls
+            gateway: Instance de TravelProvider pour les appels API externes.
         """
         self.gateway = gateway
     
     # ========================================================================
-    # Public Query Methods
+    # Méthodes de Requête Publiques
     # ========================================================================
     
     async def search_flights(
@@ -51,36 +51,36 @@ class FlightQueries:
         max_stops: Optional[int] = None
     ) -> List[Dict]:
         """
-        Search for flight offers (READ operation).
+        Rechercher des offres de vol (Opération de LECTURE).
         
-        Query flow:
-        1. Validate query parameters
-        2. Fetch data from gateway
-        3. Apply filters (budget)
-        4. Sort results
-        5. Return data
+        Flux de la requête :
+        1. Valider les paramètres.
+        2. Récupérer les données via le gateway.
+        3. Appliquer les filtres (budget).
+        4. Trier les résultats.
+        5. Retourner les données.
         
         Args:
-            origin: Departure city/airport
-            destination: Arrival city/airport
-            depart_date: Departure date (YYYY-MM-DD)
-            return_date: Return date (YYYY-MM-DD), optional
-            adults: Number of adult passengers
-            budget: Maximum budget (optional filter)
-            max_stops: Maximum number of stops (0=direct, 1=max 1 stop, None=all)
+            origin: Ville/Aéroport de départ.
+            destination: Ville/Aéroport d'arrivée.
+            depart_date: Date de départ (YYYY-MM-DD).
+            return_date: Date de retour (YYYY-MM-DD), optionnel.
+            adults: Nombre de passagers adultes.
+            budget: Budget maximum (filtre optionnel).
+            max_stops: Nombre maximum d'escales (0=direct, 1=max 1 escale, None=tous).
         
         Returns:
-            List of flight offers (filtered and sorted)
+            Liste d'offres de vol (filtrées et triées).
         
         Raises:
-            HTTPException: On validation errors
+            HTTPException: En cas d'erreur de validation.
         """
-        # 1. Validate inputs
+        # 1. Valider les entrées
         self._validate_dates(depart_date, return_date)
         self._validate_adults(adults)
         self._validate_budget(budget)
         
-        # 2. Fetch data from gateway with max_stops filter
+        # 2. Récupérer les données depuis le gateway avec filtre max_stops
         offers = await self.gateway.search_flights(
             origin=origin,
             destination=destination,
@@ -90,126 +90,126 @@ class FlightQueries:
             max_stops=max_stops
         )
         
-        # 3. Apply business rules (read-side filters)
+        # 3. Appliquer les règles métier (filtres de lecture)
         if budget:
             offers = self._filter_by_budget(offers, budget)
         
-        # 4. Sort by price
+        # 4. Trier par prix
         offers = self._sort_by_price(offers)
         
         return offers
     
     async def get_offer_details(self, offer_id: str) -> Dict:
         """
-        Get detailed information about a specific offer (READ operation).
+        Obtenir les détails d'une offre spécifique (Opération de LECTURE).
         
         Args:
-            offer_id: Unique offer identifier
+            offer_id: Identifiant unique de l'offre.
         
         Returns:
-            Offer details
+            Détails de l'offre.
         
         Raises:
-            HTTPException: On validation errors
+            HTTPException: En cas d'erreur de validation.
         """
-        # 1. Validate offer_id
+        # 1. Valider l'offer_id
         if not offer_id or not offer_id.strip():
             raise HTTPException(
                 status_code=400,
                 detail="Invalid offer_id: must be a non-empty string"
             )
         
-        # 2. Fetch details from gateway
+        # 2. Récupérer les détails depuis le gateway
         details = await self.gateway.get_offer_details(offer_id)
         
         return details
     
     # ========================================================================
-    # Validation Logic (Query Side)
+    # Logique de Validation (Côté Query)
     # ========================================================================
     
     def _validate_dates(self, depart_date: str, return_date: Optional[str]):
         """
-        Validate departure and return dates.
+        Valider les dates de départ et de retour.
         
-        Rules:
-        - Dates must be in YYYY-MM-DD format
-        - Departure date must be in the future
-        - Return date must be after departure date (if provided)
+        Règles :
+        - Les dates doivent être au format YYYY-MM-DD.
+        - La date de départ doit être dans le futur.
+        - La date de retour doit être après la date de départ (si fournie).
         """
         try:
             depart = datetime.strptime(depart_date, "%Y-%m-%d")
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid depart_date format. Use YYYY-MM-DD"
+                detail="Format de date de départ invalide. Utilisez YYYY-MM-DD."
             )
         
-        # Check if departure is in the future
+        # Vérifier si le départ est dans le futur
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         if depart < today:
             raise HTTPException(
                 status_code=400,
-                detail="Departure date must be in the future"
+                detail="La date de départ doit être dans le futur."
             )
         
-        # Validate return date if provided
+        # Valider la date de retour si fournie
         if return_date:
             try:
                 return_dt = datetime.strptime(return_date, "%Y-%m-%d")
             except ValueError:
                 raise HTTPException(
                     status_code=400,
-                    detail="Invalid return_date format. Use YYYY-MM-DD"
+                    detail="Format de date de retour invalide. Utilisez YYYY-MM-DD."
                 )
             
             if return_dt <= depart:
                 raise HTTPException(
                     status_code=400,
-                    detail="Return date must be after departure date"
+                    detail="La date de retour doit être postérieure à la date de départ."
                 )
     
     def _validate_adults(self, adults: int):
-        """Validate number of adults"""
+        """Valider le nombre d'adultes."""
         if adults < 1 or adults > 9:
             raise HTTPException(
                 status_code=400,
-                detail="Number of adults must be between 1 and 9"
+                detail="Le nombre d'adultes doit être compris entre 1 et 9."
             )
     
     def _validate_budget(self, budget: Optional[int]):
-        """Validate budget if provided"""
+        """Valider le budget si fourni."""
         if budget is not None and budget < 0:
             raise HTTPException(
                 status_code=400,
-                detail="Budget must be a positive number"
+                detail="Le budget doit être un nombre positif."
             )
     
     # ========================================================================
-    # Read-Side Business Rules
+    # Règles Métier de Lecture
     # ========================================================================
     
     def _filter_by_budget(self, offers: List[Dict], budget: int) -> List[Dict]:
-        """Filter offers by maximum budget"""
+        """Filtrer les offres par budget maximum."""
         return [offer for offer in offers if offer["price"] <= budget]
     
     def _sort_by_price(self, offers: List[Dict]) -> List[Dict]:
-        """Sort offers by price (ascending)"""
+        """Trier les offres par prix (croissant)."""
         return sorted(offers, key=lambda x: x["price"])
     
     # ========================================================================
-    # User Bookings Query (Read Model)
+    # Requête Réservations Utilisateur (Read Model)
     # ========================================================================
     
     async def get_user_bookings(self, user_id: int) -> List[Dict]:
         """
-        Get all bookings for a specific user (READ operation from Read Model).
+        Obtenir toutes les réservations pour un utilisateur spécifique (LECTURE depuis le Read Model).
         
         Args:
-            user_id: User ID to fetch bookings for
+            user_id: ID de l'utilisateur.
         
         Returns:
-            List of booking records for the user
+            Liste des enregistrements de réservation pour l'utilisateur.
         """
         from app.auth.db import SessionLocal
         from app.auth.models import Booking, BookingType
@@ -235,7 +235,7 @@ class FlightQueries:
                     "event_id": b.event_id
                 }
                 
-                # Polymorphic fields
+                # Champs polymorphiques
                 if b.booking_type == BookingType.FLIGHT or b.booking_type == "FLIGHT":
                     booking_dict.update({
                         "offer_id": b.offer_id,

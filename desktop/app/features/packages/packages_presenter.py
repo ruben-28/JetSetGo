@@ -4,7 +4,7 @@ from PySide6.QtCore import QObject
 
 class PackagesPresenter(QObject):
     """
-    Presenter for Packages View - handles business logic for package searches
+    Présenteur pour la vue Packages - gère la logique métier pour la recherche de packages
     """
     def __init__(self, view, api_client):
         super().__init__()
@@ -12,15 +12,15 @@ class PackagesPresenter(QObject):
         self.api = api_client
         self.last_packages = []
 
-        # Connect view signals to presenter methods
+        # Connecter les signaux de la vue aux méthodes du présenteur
         self.view.search_btn.clicked.connect(self.on_search)
         
-        # Set book handler for package cards
+        # Définir le gestionnaire de réservation pour les cartes de package
         self.view.set_book_handler(self.on_book)
 
     def on_search(self):
-        """Handle search button click for packages"""
-        # Get IATA codes
+        """Gère le clic sur le bouton de recherche de packages"""
+        # Récupérer les codes IATA
         if hasattr(self.view.origin, 'get_iata_code'):
             origin = self.view.origin.get_iata_code()
         else:
@@ -33,19 +33,19 @@ class PackagesPresenter(QObject):
             
         checkin = self.view.checkin_date.date().toString("yyyy-MM-dd")
         checkout = self.view.checkout_date.date().toString("yyyy-MM-dd")
-        adults = 1  # Default to 1 adult
+        adults = 1  # Par défaut 1 adulte
 
         if not origin or not destination:
             self.view.show_error("Veuillez entrer une ville de départ et de destination.")
             return
 
-        # Show loading state
+        # Afficher l'état de chargement
         self.view.set_status("🔄 Recherche de packages en cours...")
         self.view.search_btn.setEnabled(False)
         self.view.search_btn.setText("⏳ Recherche...")
         self.view.clear_results()
 
-        # Call API
+        # Appel API
         self.api.get_packages_async(
             origin=origin,
             destination=destination,
@@ -57,26 +57,26 @@ class PackagesPresenter(QObject):
         )
 
     def _on_search_success(self, data):
-        """Handle successful search results"""
+        """Gère les résultats de recherche réussis"""
         self.view.search_btn.setEnabled(True)
         self.view.search_btn.setText("🔍 Rechercher des Packages")
         
-        # Combine flights and hotels into "Packages" for display
+        # Combiner les vols et hôtels en "Packages" pour l'affichage
         flights = data.get("flights", [])
         hotels = data.get("hotels", [])
         
         packages = []
         import itertools
-        # Create combinations (up to 20)
+        # Créer des combinaisons (jusqu'à 20)
         for i, (flight, hotel) in enumerate(itertools.product(flights, hotels)):
             if i >= 20: 
                 break
             
-            # Simple price addition
+            # Simple addition de prix
             total_price = flight.get("price", 0) + hotel.get("price", 0)
             
             pkg = {
-                "id": f"{flight['id']}|{hotel['id']}",  # Compound ID
+                "id": f"{flight['id']}|{hotel['id']}",  # ID composé
                 "total_price": total_price,
                 "flight": flight,
                 "hotel": hotel
@@ -96,12 +96,12 @@ class PackagesPresenter(QObject):
         self.view.set_status("❌ Erreur de recherche")
 
     def on_book(self, package_data: dict):
-        """Handle book button click from package card"""
+        """Gère le clic sur le bouton réserver depuis une carte package"""
         flight = package_data.get("flight", {})
         hotel = package_data.get("hotel", {})
         total_price = package_data.get("total_price", 0)
         
-        # Confirmation dialog
+        # Dialoque de confirmation
         reply = QMessageBox.question(
             self.view,
             "Confirmation",
@@ -115,7 +115,7 @@ class PackagesPresenter(QObject):
         if reply == QMessageBox.Yes:
             self.view.set_status("⏳ Réservation en cours...")
             
-            # Prepare booking payload
+            # Préparer la payload de réservation
             booking_payload = {
                 "offer_id": flight.get('id', ''),
                 "departure": flight.get('departure', ''),

@@ -1,6 +1,9 @@
 """
-Event Models for Event Sourcing
-Defines all domain events that capture state changes in the system.
+Fichier: backend/app/cqrs/events/models.py
+Objectif: Modèles d'événements pour l'Event Sourcing.
+Responsabilités:
+- Définir tous les événements métier qui capturent les changements d'état.
+- Assurer la traçabilité et l'historisation.
 """
 
 from pydantic import BaseModel, Field
@@ -11,13 +14,13 @@ import uuid
 
 class BaseEvent(BaseModel):
     """
-    Base class for all domain events.
+    Classe de base pour tous les événements métier.
     
-    All events in the system inherit from this base class to ensure
-    consistent structure and traceability.
+    Tous les événements du système héritent de cette classe pour assurer
+    une structure cohérente et la traçabilité.
     """
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    aggregate_id: str  # ID of the entity this event relates to (e.g., booking_id)
+    aggregate_id: str  # ID de l'entité concernée (ex: booking_id)
     event_type: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     version: int = Field(default=1)
@@ -31,7 +34,7 @@ class BaseEvent(BaseModel):
 
 class TripCreatedEvent(BaseEvent):
     """
-    Event raised when a new trip is created (container for bookings).
+    Événement levé lors de la création d'un nouveau voyage (conteneur de réservations).
     """
     event_type: Literal["TripCreated"] = "TripCreated"
     
@@ -57,11 +60,11 @@ class TripCreatedEvent(BaseEvent):
 
 class FlightBookedEvent(BaseEvent):
     """
-    Event raised when a flight is successfully booked.
+    Événement levé lorsqu'un vol est réservé avec succès.
     """
     event_type: Literal["FlightBooked"] = "FlightBooked"
     
-    trip_id: Optional[str] = None # Added trip_id
+    trip_id: Optional[str] = None
     user_id: Optional[int] = None
     offer_id: str
     departure: str
@@ -89,7 +92,7 @@ class FlightBookedEvent(BaseEvent):
 
 class HotelBookedEvent(BaseEvent):
     """
-    Event raised when a hotel is successfully booked.
+    Événement levé lorsqu'un hôtel est réservé.
     """
     event_type: Literal["HotelBooked"] = "HotelBooked"
     
@@ -119,7 +122,7 @@ class HotelBookedEvent(BaseEvent):
 
 class ActivityBookedEvent(BaseEvent):
     """
-    Event raised when an activity is successfully booked.
+    Événement levé lorsqu'une activité est réservée.
     """
     event_type: Literal["ActivityBooked"] = "ActivityBooked"
     
@@ -143,8 +146,8 @@ class ActivityBookedEvent(BaseEvent):
 
 class PackageBookedEvent(BaseEvent):
     """
-    Event raised when a package (Flight + Hotel) is successfully booked.
-    Legacy/Combined event. Ideally decomposed into Trip + Bookings.
+    Événement levé lorsqu'un package (Vol + Hôtel) est réservé.
+    Événement combiné/Legacy. Idéalement décomposé en Trip + Bookings multiples.
     """
     event_type: Literal["PackageBooked"] = "PackageBooked"
     
@@ -184,9 +187,9 @@ class PackageBookedEvent(BaseEvent):
 
 class BookingCancelledEvent(BaseEvent):
     """
-    Event raised when a booking is cancelled.
+    Événement levé lorsqu'une réservation est annulée.
     
-    Future implementation - prepared for when cancellation feature is added.
+    Implémentation future - préparé pour quand la fonctionnalité d'annulation sera ajoutée.
     """
     event_type: Literal["BookingCancelled"] = "BookingCancelled"
     

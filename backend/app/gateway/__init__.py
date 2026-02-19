@@ -32,13 +32,9 @@ __all__ = [
     
     # Gateway implementations
     "TravelGateway",
-<<<<<<< HEAD
     "TravelProvider",
-    "HFGateway",
-=======
     "HuggingFaceGateway",
-    "HFGateway",  # Export alias
->>>>>>> c1dbc83ffe7cd2825c0c5f8e87713612e61ac51b
+    "HFGateway",
     "OllamaGateway",
     "OpenAIProvider",
 ]

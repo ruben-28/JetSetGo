@@ -1,3 +1,8 @@
+"""
+Module de Dépendances Auth
+Fournit les dépendances FastAPI pour l'authentification et l'utilisateur courant.
+"""
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -7,12 +12,17 @@ from app.auth.db import get_db
 from app.auth.models import User
 from app.auth.security import JWT_SECRET, JWT_ALGORITHM
 
+# Schéma OAuth2 pour l'extraction du token Bearer
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """
+    Dépendance pour récupérer l'utilisateur courant depuis le token JWT.
+    Valide le token et recherche l'utilisateur en base.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Impossible de valider les identifiants",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:

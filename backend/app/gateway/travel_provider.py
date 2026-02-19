@@ -37,8 +37,8 @@ class TravelProvider:
         self.api_key = os.getenv("AMADEUS_CLIENT_ID")
         self.api_secret = os.getenv("AMADEUS_CLIENT_SECRET")
         
-        # Initialize the supplementary service for airline lookups
-        # Import moved here to avoid circular dependency (TravelService -> TravelProvider -> AmadeusService -> TravelService)
+        # Initialisation du service supplémentaire pour les recherches de compagnies
+        # Import déplacé ici pour éviter les dépendances circulaires (TravelService -> TravelProvider -> AmadeusService -> TravelService)
         from app.services.amadeus_service import AmadeusService
         self.amadeus_service = AmadeusService()
         self.client = None
@@ -56,11 +56,11 @@ class TravelProvider:
             logger.warning("Clés API Amadeus manquantes. Le provider ne fonctionnera pas.")
 
     async def __aenter__(self):
-        """Support pour async with context manager"""
+        """Support pour le context manager async (async with)."""
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Cleanup lors de la sortie du context manager"""
+        """Nettoyage lors de la sortie du context manager."""
         return False
 
     def _get_iata_code(self, city_or_code: str) -> str:
@@ -122,7 +122,7 @@ class TravelProvider:
         """Tente de résoudre un nom de ville en code IATA via l'API."""
         locations = await self.search_locations(keyword)
         if locations:
-             code = locations[0].get('iata') # Fixed: search_locations returns 'iata' key, not 'code'
+             code = locations[0].get('iata') # Correction: search_locations retourne la clé 'iata', pas 'code'
              logger.info(f"Résolu '{keyword}' -> {code}")
              return code
         return keyword
@@ -157,18 +157,18 @@ class TravelProvider:
             if budget:
                 params['maxPrice'] = int(budget)
             
-            # Add stops filter for Amadeus API
+            # Ajout du filtre d'escales pour l'API Amadeus
             if max_stops is not None:
                 if max_stops == 0:
-                    # Direct flights only
+                    # Vols directs uniquement
                     params['nonStop'] = 'true'
                 elif max_stops > 0:
-                    # Maximum number of connections (stops)
+                    # Nombre maximum d'escales
                     params['max'] = max_stops
 
             response = self.client.shopping.flight_offers_search.get(**params)
             
-            # Extract unique airline codes from all flights
+            # Extraction des codes compagnies uniques de tous les vols
             flight_offers = response.data
             unique_carriers = set()
             for offer in flight_offers:
@@ -176,12 +176,12 @@ class TravelProvider:
                     for segment in itinerary.get('segments', []):
                          unique_carriers.add(segment.get('carrierCode'))
             
-            # Fetch airline names concurrently
+            # Récupération des noms de compagnies en parallèle
             airline_map = {}
             if unique_carriers:
-                 logger.info(f"Fetching airline names for codes: {unique_carriers}")
-                 # Use asyncio.gather to fetch all in parallel
-                 # Note: In a real high-throughput system you might want to batch this or handle errors individually
+                 logger.info(f"Récupération des noms de compagnies pour les codes: {unique_carriers}")
+                 # Utilisation de asyncio.gather pour tout récupérer en parallèle
+                 # Note: Dans un système à fort trafic, il faudrait batcher ou gérer les erreurs individuellement
                  tasks = []
                  for code in unique_carriers:
                       tasks.append(self._fetch_airline_safe(code))
@@ -200,15 +200,15 @@ class TravelProvider:
             return []
 
     async def _fetch_airline_safe(self, code: str):
-         """Helper to fetch airline name safely without failing the whole request."""
+         """Helper pour récupérer le nom de la compagnie sans faire échouer toute la requête."""
          try:
               details = await self.amadeus_service.get_airline_by_code(code)
-              # Prioritize commonName, then businessName, then fallback to code
+              # Priorité au nom commun, puis nom commercial, puis fallback sur le code
               name = details.get('commonName') or details.get('businessName') or code
               return (code, name)
          except Exception as e:
-              logger.warning(f"Failed to fetch name for airline {code}: {e}")
-              return (code, code)  # Fallback to code if lookup fails
+              logger.warning(f"Échec récupération nom compagnie {code}: {e}")
+              return (code, code)  # Fallback sur le code en cas d'échec
 
     def _parse_flights(self, offers: List, depart_date: str, return_date: Optional[str], airline_map: Dict[str, str] = {}) -> List[Dict]:
         """Convertit la réponse Amadeus en format OfferOut."""
@@ -253,8 +253,8 @@ class TravelProvider:
             "notes": "Détails temps réel non disponibles sans cache offre.",
             "price_verified": False,
             "real_time_data": True,
-            "baggage": "Standard (1x23kg)", # Placeholder safest bet
-            "refund_policy": "Non remboursable", # Placeholder safest bet
+            "baggage": "Standard (1x23kg)", # Placeholder valeur sûre
+            "refund_policy": "Non remboursable", # Placeholder valeur sûre
             "hotel_suggestion": {"name": "Hôtel Partenaire (Non spécifié)"}
         }
 
@@ -348,12 +348,12 @@ class TravelProvider:
             return []
         
         try:
-            # Extract IATA code if keyword is in format "CITY (CODE), COUNTRY"
-            # This handles cases where the frontend sends back a selected value
+            # Extraire le code IATA si le mot-clé est au format "CITY (CODE), COUNTRY"
+            # Cela gère les cas où le frontend renvoie une valeur sélectionnée
             iata_match = re.search(r'\(([A-Z]{3})\)', keyword)
             if iata_match:
-                # If we have a full selection like "PARIS (PAR), FRANCE", extract just the code
-                logger.info(f"Extracted IATA code from selection: {keyword} -> {iata_match.group(1)}")
+                # Si nous avons une sélection complète comme "PARIS (PAR), FRANCE", extraire juste le code
+                logger.info(f"Extraction du code IATA de la sélection: {keyword} -> {iata_match.group(1)}")
                 keyword = iata_match.group(1)
             
             logger.info(f"Recherche de villes/aéroports pour: '{keyword}'")
@@ -434,12 +434,12 @@ class TravelProvider:
     async def book_flight(self, offer_id: str, travelers: List[Dict]) -> Dict:
         """
         Réserve un vol via Amadeus (Booking API).
-        Requires 'flight-order' capability.
+        Nécessite la capacité 'flight-order'.
         """
         if not self.client:
-            raise Exception("Provider not connected")
+            raise Exception("Provider non connecté")
 
-        # Mock implementation for stability as requested (real implementation needs full Offer object)
+        # Implémentation mock pour la stabilité (l'implémentation réelle nécessite l'objet Offer complet)
         return {
             "id": f"BOOK-{offer_id[:8]}",
             "provider_id": f"AMADEUS-{offer_id}",

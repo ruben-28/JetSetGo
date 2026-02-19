@@ -4,7 +4,7 @@ from .base_gateway import BaseGateway
 
 class HuggingFaceGateway(BaseGateway):
     """
-    Gateway for HuggingFace Inference API integration using InferenceClient.
+    Gateway pour l'intégration de l'API d'inférence HuggingFace via InferenceClient.
     """
     
     INTENT_MODEL = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"
@@ -14,12 +14,12 @@ class HuggingFaceGateway(BaseGateway):
         return ["HF_API_TOKEN"]
 
     async def _get_client(self) -> InferenceClient:
-        """Get or create InferenceClient"""
+        """Obtenir ou créer InferenceClient"""
         token = self._get_config("HF_API_TOKEN")
         return InferenceClient(provider="hf-inference", api_key=token)
 
     async def classify_intent(self, text: str) -> Dict[str, Any]:
-        """Classify intent using Zero-Shot Classification."""
+        """Classifier l'intention en utilisant la classification Zero-Shot."""
         if self.is_mock_mode():
             return await self._mock_classify_intent(text)
 
@@ -30,32 +30,32 @@ class HuggingFaceGateway(BaseGateway):
 
         try:
             client = await self._get_client()
-            # Note: zero_shot_classification is not async in current client, 
-            # but usually fast enough or we should wrap in run_in_executor if blocking.
-            # However, for simplicity and as per user request to use client:
+            # Note : zero_shot_classification n'est pas asynchrone dans le client actuel,
+            # mais généralement assez rapide ou devrait être enveloppé dans run_in_executor si bloquant.
+            # Cependant, pour la simplicité et selon la demande utilisateur d'utiliser le client :
             
-            # Wrap text in list to avoid strict type validation error in newer huggingface_hub versions
-            # which expects a list output when validating.
+            # Envelopper le texte dans une liste pour éviter l'erreur de validation de type strict 
+            # dans les versions plus récentes de huggingface_hub qui attendent une liste en sortie lors de la validation.
             results = client.zero_shot_classification(
                 [text],
                 candidates,
                 model=self.INTENT_MODEL
             )
             
-            # Result is usually {labels: [], scores: []} or similar object
-            # InferenceClient returns a dict-like object usually
+            # Le résultat est généralement {labels: [], scores: []} ou un objet similaire
+            # InferenceClient retourne généralement un objet de type dict
             
             if not results:
                 return {"intent": "general", "confidence": 0.0}
 
-            # Get first result
+            # Obtenir le premier résultat
             result = results[0]
 
-            # Accessing attributes assuming it returns an object or dict
-            # Based on docs, it returns a dict with 'labels' and 'scores'
-            # Adjust access based on actual return type if needed.
+            # Accéder aux attributs en supposant qu'il retourne un objet ou un dictionnaire
+            # Basé sur la doc, il retourne un dict avec 'labels' et 'scores'
+            # Ajuster l'accès selon le type de retour réel si nécessaire.
             
-            # Safely get first item
+            # Obtenir le premier élément en toute sécurité
             top_label = result['labels'][0]
             top_score = result['scores'][0]
             
@@ -68,11 +68,11 @@ class HuggingFaceGateway(BaseGateway):
             }
 
         except Exception as e:
-            self.logger.error(f"HF Intent Classification failed: {e}")
+            self.logger.error(f"Échec de la classification d'intention HF : {e}")
             return await self._mock_classify_intent(text)
 
     async def extract_entities(self, text: str) -> List[Dict]:
-        """Extract named entities using Token Classification."""
+        """Extraire les entités nommées en utilisant la classification de tokens (Token Classification)."""
         if self.is_mock_mode():
             return await self._mock_extract_entities(text)
             
@@ -80,16 +80,16 @@ class HuggingFaceGateway(BaseGateway):
             client = await self._get_client()
             result = client.token_classification(text, model=self.NER_MODEL)
             
-            # Result is a list of objects/dicts
-            # Normalize to our expected format
+            # Le résultat est une liste d'objets/dicts
+            # Normaliser vers notre format attendu
             entities = []
             for item in result:
-                # item might be an object or dict
-                # User example showed `result = client.token_classification(...)`
-                # Let's assume list of dicts: {'entity_group': '..', 'word': '..', 'score': ..}
-                # But 'Davlan' model uses 'PER', 'LOC', 'ORG'
+                # item peut être un objet ou un dict
+                # L'exemple utilisateur montrait `result = client.token_classification(...)`
+                # Supposons une liste de dicts : {'entity_group': '..', 'word': '..', 'score': ..}
+                # Mais le modèle 'Davlan' utilise 'PER', 'LOC', 'ORG'
                 
-                # Check for dict or object access
+                # Vérifier l'accès dict ou objet
                 entity_group = item.get('entity_group') if isinstance(item, dict) else item.entity_group
                 word = item.get('word') if isinstance(item, dict) else item.word
                 score = item.get('score') if isinstance(item, dict) else item.score
@@ -103,15 +103,15 @@ class HuggingFaceGateway(BaseGateway):
             return entities
 
         except Exception as e:
-            self.logger.error(f"HF NER failed: {e}")
+            self.logger.error(f"Échec HF NER : {e}")
             return await self._mock_extract_entities(text)
 
     # ========================================================================
-    # Mock / Fallback
+    # Mock / Solutions de repli (Fallback)
     # ========================================================================
 
     async def _mock_classify_intent(self, text: str) -> Dict[str, Any]:
-        """Simple keyword fallback."""
+        """Solution de repli simple par mots-clés."""
         text = text.lower()
         keywords = {
             "flight_search": ["vol", "flight", "avion", "fly"],
@@ -136,7 +136,7 @@ class HuggingFaceGateway(BaseGateway):
         return {"intent": detected_intent, "confidence": confidence}
 
     async def _mock_extract_entities(self, text: str) -> List[Dict]:
-        """Simple keyword fallback for NER."""
+        """Solution de repli simple par mots-clés pour le NER."""
         entities = []
         text_lower = text.lower()
         cities = ["paris", "london", "new york", "tokyo", "dubai", "barcelona", "rome", "madrid"]

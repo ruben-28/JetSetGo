@@ -1,3 +1,12 @@
+"""
+Module de Service Amadeus
+Service d'intégration avec l'API Amadeus.
+Responsabilités:
+- Authentification (OAuth2 Client Credentials).
+- Récupération des données référentielles (Compagnies aériennes).
+- Gestion du cache simple pour les compagnies.
+"""
+
 import os
 import httpx
 import logging
@@ -8,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class AmadeusService:
     """
-    Service to interact with the Amadeus API for airline information.
+    Service pour interagir avec l'API Amadeus (Vols, Compagnies).
     """
     
     BASE_URL = "https://test.api.amadeus.com"
@@ -23,14 +32,14 @@ class AmadeusService:
         self._airline_cache: Dict[str, Dict[str, Any]] = {}
         
         if not self.client_id or not self.client_secret:
-            logger.warning("AMADEUS_CLIENT_ID or AMADEUS_CLIENT_SECRET not set in environment variables.")
+            logger.warning("AMADEUS_CLIENT_ID ou AMADEUS_CLIENT_SECRET non définis dans l'environnement.")
 
     async def _get_access_token(self) -> str:
         """
-        Retrieves an access token from Amadeus using Client Credentials grant.
-        Auto-refreshes if expired or not exists.
+        Récupère un token d'accès auprès d'Amadeus (Client Credentials).
+        Renouvelle automatiquement le token s'il est expiré ou inexistant.
         """
-        # Return existing valid token
+        # Retourne le token existant s'il est encore valide
         if self._access_token and self._token_expiry and datetime.now() < self._token_expiry:
             return self._access_token
             
@@ -49,36 +58,36 @@ class AmadeusService:
                 data = response.json()
                 
                 self._access_token = data["access_token"]
-                # Expires in is in seconds. Remove a buffer of 60s to be safe.
+                # L'expiration est en secondes. On retire 60s par sécurité.
                 expires_in = int(data.get("expires_in", 1799))
                 self._token_expiry = datetime.now() + timedelta(seconds=expires_in - 60)
                 
                 return self._access_token
                 
             except httpx.HTTPStatusError as e:
-                logger.error(f"Failed to get Amadeus token: {e.response.text}")
-                raise ValueError(f"Authentication failed: {e.response.text}")
+                logger.error(f"Échec obtention token Amadeus : {e.response.text}")
+                raise ValueError(f"Authentification échouée : {e.response.text}")
             except Exception as e:
-                logger.error(f"Error getting Amadeus token: {e}")
+                logger.error(f"Erreur obtention token Amadeus : {e}")
                 raise
 
     async def get_airline_by_code(self, iata_code: str) -> Dict[str, Any]:
         """
-        Retrieves airline details by IATA code.
+        Récupère les détails d'une compagnie aérienne par son code IATA.
         
         Args:
-            iata_code: The 2-character IATA airline code (e.g. 'AF').
+            iata_code: Code IATA à 2 caractères (ex: 'AF').
             
         Returns:
-            Dictionary containing airline details.
+            Dictionnaire contenant les détails de la compagnie.
             
         Raises:
-            ValueError: If code is invalid or not found.
+            ValueError: Si le code est invalide ou non trouvé.
         """
         if not iata_code or len(iata_code) != 2:
-             raise ValueError(f"Invalid IATA code format: '{iata_code}'. Must be 2 characters.")
+             raise ValueError(f"Format code IATA invalide : '{iata_code}'. Doit faire 2 caractères.")
 
-        # Check in-memory cache first
+        # Vérification du cache mémoire en premier
         if iata_code in self._airline_cache:
             return self._airline_cache[iata_code]
 
@@ -92,41 +101,37 @@ class AmadeusService:
                     headers={"Authorization": f"Bearer {token}"}
                 )
                 
-                # Check for 404 or empty data (Amadeus might return 200 with warnings for not found)
+                # Vérifie 404 ou données vides
                 if response.status_code == 404:
-                     raise ValueError(f"Airline with code '{iata_code}' not found.")
+                     raise ValueError(f"Compagnie avec code '{iata_code}' introuvable.")
                      
                 response.raise_for_status()
                 data = response.json()
                 
                 if "data" not in data or not data["data"]:
-                     # Sometimes API returns 200 but data is empty if not found in specific context
-                     raise ValueError(f"Airline with code '{iata_code}' not found (empty result).")
+                     raise ValueError(f"Compagnie avec code '{iata_code}' introuvable (résultat vide).")
                      
                 result = data["data"][0]
                 
-                # Cache the result
+                # Mise en cache
                 self._airline_cache[iata_code] = result
                 
                 return result
                 
             except httpx.HTTPStatusError as e:
-                # API returns 400/404 for invalid/unknown codes usually in a structured JSON error
-                # We try to extract a useful message
+                # L'API retourne 400/404 pour les codes invalides
                 try:
                     error_data = e.response.json()
                     errors = error_data.get("errors", [])
                     if errors:
                         detail = errors[0].get("detail") or errors[0].get("title")
-                        raise ValueError(f"Amadeus API Error: {detail}")
+                        raise ValueError(f"Erreur API Amadeus : {detail}")
                 except ValueError:
-                    # re-raise original if it wasn't the JSON we expected
                     pass
                 
-                raise ValueError(f"HTTP Error fetching airline: {e}")
+                raise ValueError(f"Erreur HTTP récupération compagnie : {e}")
             except Exception as e:
-                 # If it is already our ValueError, just re-raise
                 if isinstance(e, ValueError):
                     raise
-                logger.error(f"Error fetching airline {iata_code}: {e}")
-                raise ValueError(f"System error: {str(e)}")
+                logger.error(f"Erreur récupération compagnie {iata_code} : {e}")
+                raise ValueError(f"Erreur système : {str(e)}")

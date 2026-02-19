@@ -229,6 +229,15 @@ class BookingCard(QFrame):
 
         status = booking.get("status", "UNKNOWN")
         status_badge = QLabel(status.upper())
+        # Traduction basique des statuts si en anglais
+        status_map = {
+            "CONFIRMED": "CONFIRMÉ",
+            "PENDING": "EN ATTENTE",
+            "CANCELLED": "ANNULÉ"
+        }
+        display_status = status_map.get(status.upper(), status.upper())
+        status_badge.setText(display_status)
+        
         status_color = "#22c55e" if status == "CONFIRMED" else "#ef4444"
         status_badge.setStyleSheet(f"""
             background: rgba(255, 255, 255, 0.9);

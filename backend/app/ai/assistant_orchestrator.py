@@ -1,16 +1,16 @@
 """
-Assistant Orchestrator - Central Decision Engine
+Assistant Orchestrator - Moteur de Décision Central
 
-Refactored to use existing gateway infrastructure:
-- app.gateway.OllamaGateway for natural language generation
-- app.gateway.HFGateway for analysis (can be extended for intent classification)
+Refactorisé pour utiliser l'infrastructure de gateway existante :
+- app.gateway.OllamaGateway pour la génération de langage naturel
+- app.gateway.HFGateway pour l'analyse (peut être étendu pour la classification d'intention)
 
-Flow:
-1. Receive user message
-2. Analyze intent (simple keyword matching for now, can integrate HF models later)
-3. Decide action based on intent
-4. Generate natural language response with Ollama
-5. Return action + response to desktop
+Flux :
+1. Recevoir le message utilisateur
+2. Analyser l'intention (matching de mots-clés simple pour l'instant, peut intégrer modèles HF plus tard)
+3. Décider de l'action basée sur l'intention
+4. Générer la réponse en langage naturel avec Ollama
+5. Retourner l'action + réponse au desktop
 """
 from typing import Dict, Optional, List
 import logging
@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 
 class AssistantOrchestrator:
     """
-    Central decision engine for AI assistant.
-    Uses existing gateway infrastructure.
+    Moteur de décision central pour l'assistant IA.
+    Utilise l'infrastructure de gateway existante.
     """
     
     def __init__(self):
@@ -32,9 +32,9 @@ class AssistantOrchestrator:
     
     async def process_message(self, user_message: str, user_id: int) -> Dict:
         """
-        Main orchestration logic.
+        Logique d'orchestration principale.
         
-        Returns:
+        Retourne :
             {
                 "action": str,  # "navigate", "display_results", "chat_only"
                 "target_view": str | None,  # "flights", "hotels", "packages"
@@ -44,18 +44,18 @@ class AssistantOrchestrator:
                 "metadata": {...}
             }
         """
-        logger.info(f"Processing message from user {user_id}: {user_message}")
+        logger.info(f"Traitement du message de l'utilisateur {user_id} : {user_message}")
         
-        # Step 1: Analyze intent using simple keyword matching
-        # TODO: Can be enhanced with HF zero-shot classification later
+        # Étape 1 : Analyser l'intention en utilisant un simple matching de mots-clés
+        # TODO : Peut être amélioré avec la classification zero-shot HF plus tard
         analysis = await self._analyze_intent(user_message)
         
         intent = analysis["intent"]
         entities = analysis["entities"]
         
-        logger.info(f"Intent: {intent}, Entities: {entities}")
+        logger.info(f"Intention : {intent}, Entités : {entities}")
         
-        # Step 2: Route based on intent
+        # Étape 2 : Routage basé sur l'intention
         if intent == "flight_search":
             return await self._handle_flight_search(entities, user_message)
         
@@ -75,27 +75,27 @@ class AssistantOrchestrator:
             return await self._handle_inspiration(entities, user_message)
         
         else:
-            # General conversation
+            # Conversation générale
             return await self._handle_general_conversation(user_message)
     
     async def _analyze_intent(self, message: str) -> Dict:
         """
-        Analyze intent using Hybrid approach (HF Zero-Shot + Regex Fallback).
+        Analyser l'intention en utilisant une approche hybride (HF Zero-Shot + Regex Fallback).
         """
-        # 1. Try Hugging Face Zero-Shot Classification
+        # 1. Essayer la classification Zero-Shot Hugging Face
         async with HuggingFaceGateway() as gateway:
-            # Candidates are now hardcoded in the Gateway
+            # Les candidats sont maintenant codés en dur dans le Gateway
             
             result = await gateway.classify_intent(message)
             
-            # Result format: {'intent': '...', 'confidence': 0.9}
-            # Threshold logic is already handled in the Gateway
+            # Format du résultat : {'intent': '...', 'confidence': 0.9}
+            # La logique de seuil est déjà gérée dans le Gateway
             intent = result["intent"]
             confidence = result["confidence"]
             
-            logger.info(f"Detected intent '{intent}' with confidence {confidence:.2f}")
+            logger.info(f"Intention détectée '{intent}' avec confiance {confidence:.2f}")
                 
-        # 3. Extract entities (Hybrid: HF NER + Regex)
+        # 3. Extraire les entités (Hybride : HF NER + Regex)
         entities = await self._extract_entities(message)
         
         return {
@@ -105,35 +105,35 @@ class AssistantOrchestrator:
     
     async def _extract_entities(self, message: str) -> Dict:
         """
-        Hybrid Entity Extraction:
-        - LOC (Destination/Origin): Uses Hugging Face NER (xlm-roberta)
-        - DATES/TRAVELERS: Uses Regex (more reliable for structure)
+        Extraction d'Entités Hybride :
+        - LOC (Destination/Origine) : Utilise Hugging Face NER (xlm-roberta)
+        - DATES/TRAVELERS : Utilise Regex (plus fiable pour la structure)
         """
-        # 1. Regex Extraction (Dates, Travelers, Budget, Preferences)
-        # We reuse the logic from the Gateway mock/helper which has good regex patterns
-        # Or implement it here. For clean separation, let's call the Gateway's helpers
-        # via a private method or just reimplement simple regex here.
-        # Let's keep it robust and simple here.
+        # 1. Extraction Regex (Dates, Voyageurs, Budget, Préférences)
+        # Nous réutilisons la logique du mock/helper Gateway qui a de bons patterns regex
+        # Ou l'implémentons ici. Pour une séparation propre, appelons les helpers du Gateway
+        # via une méthode privée ou réimplémentons simplement des regex ici.
+        # Gardons-le robuste et simple ici.
         
-        # Date regex (manual for now to avoid dependency hell if dateparser missing)
+        # Regex de date (manuel pour l'instant pour éviter l'enfer des dépendances si dateparser manquant)
         import re
         date_pattern = r"(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre|demain|semaine prochaine|\d{1,2}[/-]\d{1,2})"
         date_match = re.search(date_pattern, message.lower())
         dates = {"raw": date_match.group(0)} if date_match else None
         
-        # 2. HF NER (for Locations)
+        # 2. HF NER (pour Lieux - Locations)
         destination = None
         async with HuggingFaceGateway() as gateway:
             entities_list = await gateway.extract_entities(message)
-            # Filter for LOC
+            # Filtrer pour LOC
             locations = [e["word"] for e in entities_list if e.get("entity_group") == "LOC"]
             if locations:
-                # Naive: take first location as destination
+                # Naïf : prendre le premier lieu comme destination
                 destination = locations[0]
         
-        # Fallback for destination if NER failed
+        # Fallback pour la destination si NER a échoué
         if not destination:
-            # List of major cities (Fallback)
+            # Liste des villes majeures (Fallback)
             cities = [
                 "Paris", "London", "New York", "Tokyo", "Rome", "Barcelona",
                 "Madrid", "Berlin", "Amsterdam", "Prague", "Vienna", "Budapest",
@@ -147,17 +147,17 @@ class AssistantOrchestrator:
 
         return {
             "destination": destination,
-            "period": dates["raw"] if dates else None, # Legacy compatibility
-            "preferences": [], # Can be enhanced later
+            "period": dates["raw"] if dates else None, # Compatibilité héritée
+            "preferences": [], # Peut être amélioré plus tard
             "dates": dates,
             "travelers": None 
         }
     
     async def _generate_ollama_response(self, prompt_type: str, context: Dict) -> str:
-        """Generate natural language response using Ollama."""
+        """Générer une réponse en langage naturel utilisant Ollama."""
         
-        # Build messages for Ollama chat API
-        # Explicitly enforce French language to avoid hallucinations/language mixing
+        # Construire les messages pour l'API de chat Ollama
+        # Forcer explicitement la langue française pour éviter les hallucinations/mélanges de langues
         system_message = (
             "Tu es un assistant de voyage intelligent et sympathique pour JetSetGo. "
             "Ta langue de sortie est STRICTEMENT le FRANÇAIS. "
@@ -212,8 +212,8 @@ class AssistantOrchestrator:
         ]
         
         try:
-            # Create a fresh OllamaGateway for each request to avoid
-            # client reuse issues (client is closed after context exit)
+            # Créer un OllamaGateway frais pour chaque requête pour éviter
+            # les problèmes de réutilisation de client (client est fermé après sortie de contexte)
             async with OllamaGateway() as gateway:
                 result = await gateway.chat_completion(
                     messages=messages,
@@ -223,12 +223,12 @@ class AssistantOrchestrator:
                 return result["content"]
         
         except Exception as e:
-            logger.error(f"Ollama generation failed: {e}")
-            # Fallback to simple templates
+            logger.error(f"Génération Ollama échouée : {e}")
+            # Fallback vers des templates simples
             return self._fallback_response(prompt_type, context)
     
     def _fallback_response(self, prompt_type: str, context: Dict) -> str:
-        """Fallback when Ollama is unavailable."""
+        """Solution de repli lorsque Ollama est indisponible."""
         dest = context.get('destination', 'votre destination')
         
         fallbacks = {
@@ -250,7 +250,7 @@ class AssistantOrchestrator:
         return fallbacks.get(prompt_type, fallbacks["general"])
     
     async def _handle_flight_search(self, entities: Dict, user_message: str) -> Dict:
-        """Handle flight search intent."""
+        """Gérer l'intention de recherche de vol."""
         destination = entities.get("destination")
         
         if not destination:
@@ -267,7 +267,7 @@ class AssistantOrchestrator:
                 "metadata": {"needs_clarification": True}
             }
         
-        # Navigate to flights view with prefilled destination
+        # Naviguer vers la vue vols avec destination pré-remplie
         response = await self._generate_ollama_response(
             "navigate_to_flights",
             {"destination": destination}
@@ -283,7 +283,7 @@ class AssistantOrchestrator:
         }
     
     async def _handle_hotel_search(self, entities: Dict, user_message: str) -> Dict:
-        """Handle hotel search intent."""
+        """Gérer l'intention de recherche d'hôtel."""
         destination = entities.get("destination")
         
         if not destination:
@@ -315,7 +315,7 @@ class AssistantOrchestrator:
         }
     
     async def _handle_package_search(self, entities: Dict, user_message: str) -> Dict:
-        """Handle package search intent."""
+        """Gérer l'intention de recherche de package."""
         destination = entities.get("destination")
         
         if not destination:
@@ -347,8 +347,8 @@ class AssistantOrchestrator:
         }
     
     async def _handle_inspiration(self, entities: Dict, user_message: str) -> Dict:
-        """Handle inspiration requests with contextualized suggestions."""
-        # Pass extracted context to Ollama for personalized suggestions
+        """Gérer les demandes d'inspiration avec suggestions contextualisées."""
+        # Passer le contexte extrait à Ollama pour des suggestions personnalisées
         context = {
             "period": entities.get("period"),
             "preferences": entities.get("preferences", []),
@@ -373,15 +373,15 @@ class AssistantOrchestrator:
         }
     
     async def _handle_booking_history(self, entities: Dict, user_message: str) -> Dict:
-        """Handle booking history intent."""
-        # Navigate to history view
+        """Gérer l'intention d'historique de réservation."""
+        # Naviguer vers la vue historique
         response = await self._generate_ollama_response(
-            "general", # Generic confirmation
+            "general", # Confirmation générique
             {"message": "Je vous affiche votre historique de réservations."}
         )
         return {
             "action": "navigate",
-            "target_view": "history", # Assuming this view exists
+            "target_view": "history", # En supposant que cette vue existe
             "prefill_data": None,
             "search_results": None,
             "response_text": response,
@@ -389,11 +389,11 @@ class AssistantOrchestrator:
         }
 
     async def _handle_budget_advice(self, entities: Dict, user_message: str) -> Dict:
-        """Handle budget advice intent."""
-        # Chat only for now
+        """Gérer l'intention de conseil budgétaire."""
+        # Chat uniquement pour l'instant
         response = await self._generate_ollama_response(
             "general",
-            {"message": user_message} # Let Ollama handle the advice
+            {"message": user_message} # Laisser Ollama gérer le conseil
         )
         return {
             "action": "chat_only",
@@ -405,7 +405,7 @@ class AssistantOrchestrator:
         }
 
     async def _handle_general_conversation(self, user_message: str) -> Dict:
-        """Handle general conversation."""
+        """Gérer la conversation générale."""
         response = await self._generate_ollama_response(
             "general",
             {"message": user_message}

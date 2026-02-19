@@ -1,11 +1,11 @@
 """
-Base Gateway Module
-Provides abstract base class for all external API gateways with:
-- Async HTTP client (httpx)
-- Configuration management (environment variables)
-- Retry logic with exponential backoff
-- Custom exception handling
-- Mock mode detection
+Module de Gateway de Base (Base Gateway)
+Fournit une classe de base abstraite pour toutes les gateways API externes avec :
+- Client HTTP asynchrone (httpx)
+- Gestion de configuration (variables d'environnement)
+- Logique de réessai avec backoff exponentiel
+- Gestion personnalisée des exceptions
+- Détection du mode Mock
 """
 
 import os
@@ -17,73 +17,73 @@ from asyncio import sleep
 
 
 # ============================================================================
-# Custom Exceptions
+# Exceptions Personnalisées
 # ============================================================================
 
 class GatewayError(Exception):
-    """Base exception for all gateway errors"""
+    """Exception de base pour toutes les erreurs de gateway"""
     pass
 
 
 class GatewayConfigError(GatewayError):
-    """Raised when gateway configuration is invalid or missing"""
+    """Levée lorsque la configuration du gateway est invalide ou manquante"""
     pass
 
 
 class GatewayTimeoutError(GatewayError):
-    """Raised when gateway request times out"""
+    """Levée lorsque la requête du gateway expire (timeout)"""
     pass
 
 
 class GatewayAPIError(GatewayError):
-    """Raised when external API returns an error"""
+    """Levée lorsque l'API externe retourne une erreur"""
     def __init__(self, message: str, status_code: Optional[int] = None):
         super().__init__(message)
         self.status_code = status_code
 
 
 # ============================================================================
-# Base Gateway
+# Gateway de Base
 # ============================================================================
 
 class BaseGateway(ABC):
     """
-    Abstract base class for all API gateways.
+    Classe de base abstraite pour toutes les gateways API.
     
-    Responsibilities:
-    - Manage httpx.AsyncClient lifecycle
-    - Load configuration from environment variables
-    - Implement retry logic with exponential backoff
-    - Provide mock mode detection
-    - Handle common HTTP errors
+    Responsabilités :
+    - Gérer le cycle de vie de httpx.AsyncClient
+    - Charger la configuration depuis les variables d'environnement
+    - Implémenter la logique de réessai avec backoff exponentiel
+    - Fournir la détection du mode Mock
+    - Gérer les erreurs HTTP courantes
     
-    Subclasses must implement:
-    - _get_required_config_keys(): List of required env var keys
+    Les sous-classes doivent implémenter :
+    - _get_required_config_keys() : Liste des clés de var d'env requises
     """
     
     def __init__(self):
-        """Initialize gateway with configuration and HTTP client"""
+        """Initialise le gateway avec la configuration et le client HTTP"""
         self.logger = logging.getLogger(self.__class__.__name__)
         self._client: Optional[httpx.AsyncClient] = None
         self._config = self._load_config()
         self._is_mock = self._detect_mock_mode()
         
         if self._is_mock:
-            self.logger.warning(f"{self.__class__.__name__} running in MOCK MODE (missing API keys)")
+            self.logger.warning(f"{self.__class__.__name__} exécution en MODE MOCK (clés API manquantes)")
     
     # ========================================================================
-    # Configuration Management
+    # Gestion de la Configuration
     # ========================================================================
     
     def _load_config(self) -> Dict[str, Any]:
-        """Load configuration from environment variables"""
+        """Charger la configuration depuis les variables d'environnement"""
         config = {
             "timeout": int(os.getenv("GATEWAY_TIMEOUT", "30")),
             "max_retries": int(os.getenv("GATEWAY_MAX_RETRIES", "3")),
             "retry_delay": float(os.getenv("GATEWAY_RETRY_DELAY", "1.0")),
         }
         
-        # Load gateway-specific config
+        # Charger la config spécifique au gateway
         for key in self._get_required_config_keys():
             config[key] = os.getenv(key)
         
@@ -92,22 +92,22 @@ class BaseGateway(ABC):
     @abstractmethod
     def _get_required_config_keys(self) -> list[str]:
         """
-        Return list of required environment variable keys.
-        Subclasses must implement this.
+        Retourne la liste des clés de variables d'environnement requises.
+        Les sous-classes doivent implémenter ceci.
         
-        Example:
+        Exemple :
             return ["TRAVEL_API_KEY", "TRAVEL_API_BASE_URL"]
         """
         pass
     
     def _get_config(self, key: str, default: Any = None) -> Any:
-        """Get configuration value by key"""
+        """Obtenir une valeur de configuration par clé"""
         return self._config.get(key, default)
     
     def _detect_mock_mode(self) -> bool:
         """
-        Detect if gateway should run in mock mode.
-        Returns True if any required API key is missing.
+        Détecte si le gateway doit s'exécuter en mode mock.
+        Retourne True si une clé API requise est manquante.
         """
         required_keys = self._get_required_config_keys()
         for key in required_keys:
@@ -116,38 +116,37 @@ class BaseGateway(ABC):
         return False
     
     def is_mock_mode(self) -> bool:
-        """Check if gateway is running in mock mode"""
+        """Vérifie si le gateway est en mode mock"""
         return self._is_mock
     
     # ========================================================================
-    # HTTP Client Management (with proper cleanup)
+    # Gestion du Client HTTP (avec nettoyage approprié)
     # ========================================================================
     
     async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create async HTTP client"""
+        """Obtenir ou créer le client HTTP asynchrone"""
         if self._client is None:
             timeout = httpx.Timeout(self._config["timeout"])
             self._client = httpx.AsyncClient(timeout=timeout)
         return self._client
     
     async def close(self):
-        """Close HTTP client (cleanup) - IMPORTANT: Call this to prevent resource leaks"""
+        """Fermer le client HTTP (nettoyage) - IMPORTANT : Appeler ceci pour éviter les fuites de ressources"""
         if self._client:
             await self._client.aclose()
             self._client = None
     
     async def __aenter__(self):
-        """Async context manager entry"""
+        """Entrée du context manager asynchrone"""
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Async context manager exit - automatically closes client"""
+        """Sortie du context manager asynchrone - ferme automatiquement le client"""
         await self.close()
         return False
-
     
     # ========================================================================
-    # HTTP Request Methods
+    # Méthodes de Requête HTTP
     # ========================================================================
     
     async def _make_request(
@@ -157,20 +156,20 @@ class BaseGateway(ABC):
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Make HTTP request with error handling.
+        Effectuer une requête HTTP avec gestion des erreurs.
         
         Args:
-            method: HTTP method (GET, POST, etc.)
-            url: Request URL
-            **kwargs: Additional arguments for httpx request
+            method: Méthode HTTP (GET, POST, etc.)
+            url: URL de la requête
+            **kwargs: Arguments supplémentaires pour la requête httpx
         
         Returns:
-            Response JSON as dict
+            JSON de réponse sous forme de dict
         
         Raises:
-            GatewayTimeoutError: On timeout
-            GatewayAPIError: On API error response
-            GatewayError: On other errors
+            GatewayTimeoutError: En cas de timeout
+            GatewayAPIError: En cas d'erreur de réponse API
+            GatewayError: Pour les autres erreurs
         """
         client = await self._get_client()
         
@@ -180,19 +179,19 @@ class BaseGateway(ABC):
             return response.json()
         
         except httpx.TimeoutException as e:
-            self.logger.error(f"Request timeout: {url}")
-            raise GatewayTimeoutError(f"Request timed out: {url}") from e
+            self.logger.error(f"Timeout de la requête : {url}")
+            raise GatewayTimeoutError(f"La requête a expiré : {url}") from e
         
         except httpx.HTTPStatusError as e:
-            self.logger.error(f"HTTP error {e.response.status_code}: {url}")
+            self.logger.error(f"Erreur HTTP {e.response.status_code} : {url}")
             raise GatewayAPIError(
-                f"API returned error: {e.response.status_code}",
+                f"L'API a retourné une erreur : {e.response.status_code}",
                 status_code=e.response.status_code
             ) from e
         
         except Exception as e:
-            self.logger.error(f"Unexpected error: {e}")
-            raise GatewayError(f"Request failed: {str(e)}") from e
+            self.logger.error(f"Erreur inattendue : {e}")
+            raise GatewayError(f"Échec de la requête : {str(e)}") from e
     
     async def _retry_request(
         self,
@@ -200,19 +199,19 @@ class BaseGateway(ABC):
         max_retries: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        Execute request with retry logic (exponential backoff).
+        Exécuter une requête avec logique de réessai (backoff exponentiel).
         
         Args:
-            request_func: Async function that makes the request
-            max_retries: Max retry attempts (uses config default if None)
+            request_func: Fonction asynchrone qui effectue la requête
+            max_retries: Tentatives max (utilise le défaut de la config si None)
         
         Returns:
-            Response JSON as dict
+            JSON de réponse sous forme de dict
         
         Raises:
-            GatewayError: After all retries exhausted
+            GatewayError: Après épuisement de tous les réessais
         """
-        # Use config default if max_retries is None (explicit 0 should be respected)
+        # Utiliser le défaut de config si max_retries est None (0 explicite doit être respecté)
         if max_retries is None:
             max_retries = self._config["max_retries"]
         retry_delay = self._config["retry_delay"]
@@ -226,30 +225,30 @@ class BaseGateway(ABC):
             except GatewayTimeoutError as e:
                 last_exception = e
                 if attempt < max_retries:
-                    wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
-                    self.logger.warning(f"Retry {attempt + 1}/{max_retries} after {wait_time}s")
+                    wait_time = retry_delay * (2 ** attempt)  # Backoff exponentiel
+                    self.logger.warning(f"Réessai {attempt + 1}/{max_retries} après {wait_time}s")
                     await sleep(wait_time)
                 else:
-                    self.logger.error(f"All retries exhausted")
+                    self.logger.error(f"Tous les réessais sont épuisés")
             
             except GatewayAPIError as e:
-                # Don't retry on 4xx errors (client errors)
+                # Ne pas réessayer sur les erreurs 4xx (erreurs client)
                 if e.status_code and 400 <= e.status_code < 500:
                     raise
                 
                 last_exception = e
                 if attempt < max_retries:
                     wait_time = retry_delay * (2 ** attempt)
-                    self.logger.warning(f"Retry {attempt + 1}/{max_retries} after {wait_time}s")
+                    self.logger.warning(f"Réessai {attempt + 1}/{max_retries} après {wait_time}s")
                     await sleep(wait_time)
                 else:
-                    self.logger.error(f"All retries exhausted")
+                    self.logger.error(f"Tous les réessais sont épuisés")
         
-        # All retries exhausted
-        raise last_exception or GatewayError("Request failed after retries")
+        # Tous les réessais épuisés
+        raise last_exception or GatewayError("La requête a échoué après réessais")
     
     # ========================================================================
-    # Utility Methods
+    # Méthodes Utilitaires
     # ========================================================================
     
     def __repr__(self) -> str:

@@ -1,6 +1,6 @@
 """
-LLM Provider Interface
-Abstract base class for all LLM providers (Ollama, OpenAI, etc.)
+Interface Provider LLM
+Classe de base abstraite pour tous les fournisseurs LLM (Ollama, OpenAI, etc.)
 """
 
 from abc import ABC, abstractmethod
@@ -9,10 +9,10 @@ from typing import Dict, Any, List
 
 class LLMProvider(ABC):
     """
-    Abstract interface for LLM providers.
+    Interface abstraite pour les fournisseurs LLM.
     
-    All LLM providers must implement this interface to ensure
-    consistent API across different backends (Ollama, OpenAI, Anthropic, etc.)
+    Tous les fournisseurs LLM doivent implémenter cette interface pour assurer
+    une API cohérente à travers différents backends (Ollama, OpenAI, Anthropic, etc.)
     """
     
     @abstractmethod
@@ -23,34 +23,34 @@ class LLMProvider(ABC):
         max_tokens: int = 1000
     ) -> Dict[str, Any]:
         """
-        Generate chat completion from messages.
+        Générer une complétion de chat à partir des messages.
         
         Args:
-            messages: List of message dicts with 'role' and 'content' keys
-                     Example: [{"role": "system", "content": "..."}, 
+            messages: Liste de dicts de message avec clés 'role' et 'content'
+                     Exemple : [{"role": "system", "content": "..."}, 
                               {"role": "user", "content": "..."}]
-            temperature: Sampling temperature (0-1)
-            max_tokens: Maximum tokens to generate
+            temperature: Température d'échantillonnage (0-1)
+            max_tokens: Maximum de tokens à générer
         
         Returns:
-            Dict containing:
-                - content: str - Generated response text
-                - model: str - Model name used
-                - tokens: int - Token count (if available)
-                - meta: dict - Additional metadata including 'mock' flag
+            Dict contenant :
+                - content: str - Texte de réponse généré
+                - model: str - Nom du modèle utilisé
+                - tokens: int - Compte de tokens (si disponible)
+                - meta: dict - Métadonnées supplémentaires incluant le flag 'mock'
         
         Raises:
-            GatewayError: On provider errors
-            GatewayTimeoutError: On timeout
+            GatewayError: Sur erreurs du fournisseur
+            GatewayTimeoutError: Sur timeout
         """
         pass
     
     @abstractmethod
     def is_mock_mode(self) -> bool:
         """
-        Check if provider is running in mock mode.
+        Vérifier si le fournisseur s'exécute en mode mock.
         
         Returns:
-            True if mock mode (provider unavailable), False otherwise
+            True si mode mock (fournisseur indisponible), False sinon
         """
         pass

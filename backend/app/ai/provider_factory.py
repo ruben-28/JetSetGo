@@ -1,6 +1,6 @@
 """
-Provider Factory Module
-Factory function to create the appropriate LLM provider based on configuration.
+Module Factory de Provider
+Fonction Factory pour créer le fournisseur LLM approprié basé sur la configuration.
 """
 
 import os
@@ -13,16 +13,16 @@ logger = logging.getLogger(__name__)
 
 def get_llm_provider() -> LLMProvider:
     """
-    Factory pour obtenir le LLM provider configuré.
+    Factory pour obtenir le fournisseur LLM configuré.
     
-    Lit LLM_PROVIDER env var et retourne:
-    - OllamaGateway si "ollama" (default)
+    Lit la variable LLM_PROVIDER et retourne :
+    - OllamaGateway si "ollama" (défaut)
     - OpenAIProvider si "openai" (placeholder, pas encore implémenté)
     
-    Log warnings si mode mock détecté.
+    Log des avertissements si le mode mock est détecté.
     
-    Returns:
-        LLMProvider instance configured from environment
+    Retourne :
+        Instance de LLMProvider configurée depuis l'environnement
     """
     provider_type = os.getenv("LLM_PROVIDER", "ollama").lower()
     
@@ -30,25 +30,25 @@ def get_llm_provider() -> LLMProvider:
         gateway = OllamaGateway()
         if gateway.is_mock_mode():
             logger.warning(
-                "⚠️  Ollama gateway running in MOCK MODE - "
-                "check OLLAMA_BASE_URL and model availability. "
-                "Start Ollama with: ollama serve && ollama pull qwen2.5:3b"
+                "⚠️  Ollama gateway s'exécute en MODE MOCK - "
+                "vérifiez OLLAMA_BASE_URL et la disponibilité du modèle. "
+                "Démarrez Ollama avec : ollama serve && ollama pull qwen2.5:3b"
             )
         return gateway
     
     elif provider_type == "openai":
-        # Future implementation
+        # Implémentation future
         provider = OpenAIProvider()
         logger.warning(
-            "⚠️  OpenAI provider not yet fully implemented. "
-            "Using placeholder that will raise NotImplementedError. "
-            "Use LLM_PROVIDER=ollama instead."
+            "⚠️  Le fournisseur OpenAI n'est pas encore totalement implémenté. "
+            "Utilisation du placeholder qui lèvera NotImplementedError. "
+            "Utilisez LLM_PROVIDER=ollama à la place."
         )
         return provider
     
     else:
         logger.error(
-            f"Unknown LLM_PROVIDER: {provider_type}. "
-            f"Valid options: 'ollama', 'openai'. Falling back to Ollama."
+            f"LLM_PROVIDER inconnu : {provider_type}. "
+            f"Options valides : 'ollama', 'openai'. Repli sur Ollama."
         )
         return OllamaGateway()

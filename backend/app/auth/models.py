@@ -1,9 +1,25 @@
+"""
+Fichier: backend/app/auth/models.py
+Objectif: Définition des modèles de données (ORM) pour l'authentification et les réservations.
+Responsabilités:
+- Modèle User (Utilisateur).
+- Modèle Trip (Voyage/Dossier).
+- Modèle Booking (Réservation - Modèle de lecture/Read Model).
+
+Note Architecture:
+- 'Booking' agit ici comme une PROJECTION (Read Model) alimentée par les événements.
+- La source de vérité est le Stockage d'Événements (Event Store).
+"""
+
 import enum
 from sqlalchemy import Column, Integer, String, DateTime, Float, func, Enum, ForeignKey
 from .db import Base
 
 
 class User(Base):
+    """
+    Modèle représentant un utilisateur du système.
+    """
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -14,13 +30,15 @@ class User(Base):
 
 
 class BookingType(str, enum.Enum):
+    """Types de réservations possibles."""
     FLIGHT = "FLIGHT"
     HOTEL = "HOTEL"
-    PACKAGE = "PACKAGE"
+    PACKAGE = "PACKAGE"  # Vol + Hôtel
     ACTIVITY = "ACTIVITY"
 
 
 class BookingStatus(str, enum.Enum):
+    """États possibles d'une réservation."""
     REQUESTED = "REQUESTED"
     CONFIRMED = "CONFIRMED"
     FAILED = "FAILED"
@@ -30,7 +48,8 @@ class BookingStatus(str, enum.Enum):
 
 class Trip(Base):
     """
-    Trip model to group multiple bookings.
+    Modèle Trip (Voyage).
+    Regroupe plusieurs réservations (Bookings) pour un utilisateur.
     """
     __tablename__ = "trips"
 
@@ -38,7 +57,7 @@ class Trip(Base):
     user_id = Column(Integer, index=True, nullable=False)
     name = Column(String(200), nullable=True, default="My Trip")
     
-    # Snapshot of search parameters
+    # Snapshot des paramètres de recherche
     destination = Column(String(100), nullable=True)
     start_date = Column(String(10), nullable=True)
     end_date = Column(String(10), nullable=True)
@@ -53,9 +72,9 @@ class Trip(Base):
 
 class Booking(Base):
     """
-    Read Model for bookings.
-    This table stores the projected state of bookings for efficient querying.
-    The source of truth remains the Event Store.
+    Modèle de Lecture (Read Model) pour les réservations.
+    Cette table stocke l'état projeté des réservations pour des lectures rapides.
+    La source de vérité reste le Stockage d'Événements (Event Store).
     """
     __tablename__ = "bookings"
 
@@ -63,7 +82,7 @@ class Booking(Base):
     trip_id = Column(String(36), index=True, nullable=True) # ForeignKey("trips.id")
     user_id = Column(Integer, nullable=True, index=True)
     
-    # Generic fields
+    # Champs génériques
     booking_type = Column(Enum(BookingType), nullable=False, default=BookingType.FLIGHT)
     price = Column(Float, nullable=False)
     currency = Column(String(3), default="EUR")
@@ -73,9 +92,9 @@ class Booking(Base):
     provider_id = Column(String(100), nullable=True)
     
     created_at = Column(DateTime, server_default=func.now())
-    event_id = Column(String(36), nullable=False, index=True)  # Reference to Event Store
+    event_id = Column(String(36), nullable=False, index=True)  # Référence vers l'Event Store
     
-    # Flight specific
+    # Spécifique Vol
     offer_id = Column(String(100), nullable=True, index=True)
     departure = Column(String(100), nullable=True)
     destination = Column(String(100), nullable=True)
@@ -85,7 +104,7 @@ class Booking(Base):
     flight_number = Column(String(20), nullable=True)
     adults = Column(Integer, nullable=True, default=1)
     
-    # Hotel / Package specific
+    # Spécifique Hôtel / Package
     hotel_name = Column(String(200), nullable=True)
     hotel_city = Column(String(100), nullable=True)
     check_in = Column(String(10), nullable=True)
@@ -93,7 +112,7 @@ class Booking(Base):
     room_type = Column(String(100), nullable=True)
     guests = Column(Integer, default=1)
     
-    # Activity specific
+    # Spécifique Activité
     activity_name = Column(String(200), nullable=True)
     activity_date = Column(String(10), nullable=True)
     activity_duration = Column(String(50), nullable=True)

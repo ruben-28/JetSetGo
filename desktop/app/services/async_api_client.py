@@ -1,6 +1,6 @@
 """
-Async API Client for Desktop App
-Uses httpx for async HTTP requests to prevent UI freezing.
+Client API Asynchrone pour l'application Desktop
+Utilise httpx pour les requêtes HTTP asynchrones afin d'éviter le gel de l'UI.
 """
 
 import httpx
@@ -10,27 +10,27 @@ from PySide6.QtCore import QObject, Signal, QRunnable, QThreadPool
 
 class ApiTaskSignals(QObject):
     """
-    Signals for ApiTask to communicate with main thread.
-    Qt signals are thread-safe and automatically queued to the main thread.
+    Signaux pour la communication entre ApiTask et le thread principal.
+    Les signaux Qt sont thread-safe et automatiquement mis en file d'attente vers le thread principal.
     """
-    finished = Signal(object)  # Emits result data
-    error = Signal(Exception)  # Emits exception
+    finished = Signal(object)  # Émet les données de résultat
+    error = Signal(Exception)  # Émet l'exception en cas d'erreur
 
 
 class ApiTask(QRunnable):
     """
-    Runnable task for async API calls.
-    Executes in background thread to prevent UI freezing.
-    Uses signals for thread-safe callbacks.
+    Tâche exécutable (Runnable) pour les appels API asynchrones.
+    S'exécute dans un thread d'arrière-plan pour éviter de bloquer l'UI.
+    Utilise des signaux pour des callbacks thread-safe.
     """
     
     def __init__(self, func, callback, error_callback):
         super().__init__()
         self.func = func
         self.signals = ApiTaskSignals()
-        self.setAutoDelete(False)  # Prevent deletion before signal delivery
+        self.setAutoDelete(False)  # Empêcher la suppression avant la livraison du signal
         
-        # Connect signals to callbacks with QueuedConnection for thread safety
+        # Connecter les signaux aux callbacks avec QueuedConnection pour la sécurité des threads
         from PySide6.QtCore import Qt
         if callback:
             self.signals.finished.connect(callback, Qt.QueuedConnection)
@@ -38,66 +38,66 @@ class ApiTask(QRunnable):
             self.signals.error.connect(error_callback, Qt.QueuedConnection)
     
     def run(self):
-        """Execute the async function in background thread"""
+        """Exécute la fonction asynchrone dans un thread d'arrière-plan"""
         import asyncio
         try:
-            # Create new event loop for this thread
+            # Créer une nouvelle boucle d'événements pour ce thread
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             result = loop.run_until_complete(self.func())
             loop.close()
             
-            # Emit result via signal (thread-safe!)
+            # Émettre le résultat via signal (thread-safe !)
             self.signals.finished.emit(result)
         except Exception as e:
-            # Emit error via signal (thread-safe!)
+            # Émettre l'erreur via signal (thread-safe !)
             self.signals.error.emit(e)
 
 
 class AsyncApiClient(QObject):
     """
-    Async API client that doesn't freeze the UI.
-    Uses QThreadPool to run async operations in background.
+    Client API asynchrone qui ne gèle pas l'UI.
+    Utilise QThreadPool pour exécuter les opérations asynchrones en arrière-plan.
     """
     
     def __init__(self, base_url: str):
         super().__init__()
         self.base_url = base_url.rstrip("/")
         self.thread_pool = QThreadPool()
-        self.token = None  # Will be set after login
-        self._http_client: Optional[httpx.AsyncClient] = None  # Persistent client
+        self.token = None  # Sera défini après la connexion
+        self._http_client: Optional[httpx.AsyncClient] = None  # Client persistant
     
     def set_token(self, token: str):
-        """Set authentication token"""
+        """Définit le token d'authentification"""
         self.token = token
     
     async def _get_http_client(self) -> httpx.AsyncClient:
-        """Get or create persistent HTTP client (lazy init)"""
+        """Obtient ou crée un client HTTP persistant (initialisation différée)"""
         if self._http_client is None or self._http_client.is_closed:
-            # Increase timeout to 130s to handle long-running AI requests (backend timeout is 120s)
+            # Augmenter le timeout à 130s pour gérer les requêtes IA longues (backend timeout est 120s)
             self._http_client = httpx.AsyncClient(timeout=httpx.Timeout(130.0))
         return self._http_client
     
     async def close(self):
-        """Close HTTP client - call on app shutdown"""
+        """Ferme le client HTTP - appeler à la fermeture de l'application"""
         if self._http_client and not self._http_client.is_closed:
             await self._http_client.aclose()
             self._http_client = None
     
     def _get_headers(self) -> dict:
-        """Get headers with authentication if token is set"""
+        """Obtient les en-têtes avec authentification si le token est défini"""
         headers = {"Content-Type": "application/json"}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
         return headers
     
     # ========================================================================
-    # Async API Methods
+    # Méthodes API Asynchrones
     # ========================================================================
     
     def register_async(self, username: str, email: str, password: str, 
                       on_success, on_error):
-        """Register user (async, non-blocking)"""
+        """Inscription utilisateur (async, non-bloquant)"""
         async def _register():
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -112,7 +112,7 @@ class AsyncApiClient(QObject):
     
     def login_async(self, username_or_email: str, password: str,
                    on_success, on_error):
-        """Login user (async, non-blocking)"""
+        """Connexion utilisateur (async, non-bloquant)"""
         async def _login():
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -129,7 +129,7 @@ class AsyncApiClient(QObject):
                            depart_date: str, return_date: str,
                            budget: Optional[int], max_stops: Optional[int] = None,
                            on_success=None, on_error=None):
-        """Search travel offers (async, non-blocking)"""
+        """Recherche d'offres de voyage (async, non-bloquant)"""
         async def _search():
             params = {
                 "departure": departure,
@@ -155,7 +155,7 @@ class AsyncApiClient(QObject):
         self.thread_pool.start(task)
     
     def travel_details_async(self, offer_id: str, on_success, on_error):
-        """Get travel offer details (async, non-blocking)"""
+        """Récupère les détails d'une offre (async, non-bloquant)"""
         async def _details():
             async with httpx.AsyncClient() as client:
                 response = await client.get(
@@ -171,7 +171,7 @@ class AsyncApiClient(QObject):
     def get_packages_async(self, origin: str, destination: str, 
                           depart_date: str, return_date: str, adults: int,
                           on_success, on_error):
-        """Search packages (async, non-blocking) - POST request"""
+        """Recherche de packages (async, non-bloquant) - Requête POST"""
         async def _search_packages():
             payload = {
                 "origin": origin,
@@ -194,7 +194,7 @@ class AsyncApiClient(QObject):
         self.thread_pool.start(task)
 
     def book_package_async(self, booking_data: dict, on_success, on_error):
-        """Book a package (async, non-blocking)"""
+        """Réserver un package (async, non-bloquant)"""
         async def _book_package():
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -209,7 +209,7 @@ class AsyncApiClient(QObject):
         self.thread_pool.start(task)
 
     def get_hotels_async(self, city_code: str, on_success, on_error):
-        """Get hotels (async, non-blocking)"""
+        """Récupérer des hôtels (async, non-bloquant)"""
         async def _get_hotels():
             params = {"city_code": city_code}
             async with httpx.AsyncClient() as client:
@@ -225,7 +225,7 @@ class AsyncApiClient(QObject):
         self.thread_pool.start(task)
 
     def book_flight_async(self, booking_data: dict, on_success, on_error):
-        """Book a flight (async, non-blocking)"""
+        """Réserver un vol (async, non-bloquant)"""
         async def _book():
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -240,12 +240,12 @@ class AsyncApiClient(QObject):
         self.thread_pool.start(task)
 
     def get_my_bookings_async(self, on_success, on_error):
-        """Get user's booking history (async, non-blocking)"""
+        """Récupérer l'historique des réservations (async, non-bloquant)"""
         async def _get_bookings():
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     f"{self.base_url}/travel/my-bookings",
-                    # No user_id param needed, handled by JWT in headers
+                    # Pas besoin de param user_id, géré par le token JWT
                     headers=self._get_headers(),
                     timeout=15.0
                 )
@@ -255,10 +255,10 @@ class AsyncApiClient(QObject):
         self.thread_pool.start(task)
     
     def query_assistant_async(self, message: str, on_success, on_error):
-        """Query AI assistant with navigation support (async, non-blocking)"""
+        """Interroger l'assistant IA avec support de navigation (async, non-bloquant)"""
         async def _query():
-            # Use fresh client for each thread/loop to avoid "Event loop is closed" error
-            # Timeout 130s to match backend configuration
+            # Utiliser un nouveau client pour chaque thread/boucle pour éviter "Event loop is closed"
+            # Timeout 130s pour correspondre à la config backend
             async with httpx.AsyncClient(timeout=130.0) as client:
                 response = await client.post(
                     f"{self.base_url}/api/ai/assistant",
@@ -271,7 +271,7 @@ class AsyncApiClient(QObject):
         self.thread_pool.start(task)
 
     def get_autocomplete_async(self, keyword, on_success, on_error):
-        """Get autocomplete suggestions (async, non-blocking)"""
+        """Obtenir des suggestions d'autocomplétion (async, non-bloquant)"""
         # Annuler les tâches précédentes serait bien, mais requiert une gestion complexe des tâches
         # Pour l'instant on compte sur le debounce du côté Vue
         async def _autocomplete():
@@ -288,7 +288,7 @@ class AsyncApiClient(QObject):
         self.thread_pool.start(task)
     
     def book_hotel_async(self, booking_data: dict, on_success, on_error):
-        """Book a hotel (async, non-blocking)"""
+        """Réserver un hôtel (async, non-bloquant)"""
         async def _book_hotel():
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -303,7 +303,7 @@ class AsyncApiClient(QObject):
         self.thread_pool.start(task)
     
     def search_cities_async(self, keyword: str, on_success, on_error):
-        """Search for cities/airports (async, non-blocking) - for autocomplete"""
+        """Rechercher des villes/aéroports (async, non-bloquant) - pour autocomplétion"""
         async def _search_cities():
             params = {"keyword": keyword}
             async with httpx.AsyncClient() as client:
@@ -321,25 +321,25 @@ class AsyncApiClient(QObject):
     def consult_ai_async(self, mode: str, message: str, context: dict,
                          on_success, on_error):
         """
-        Consult AI assistant (async, non-blocking).
-        Uses persistent HTTP client for better performance.
+        Consulter l'assistant IA (async, non-bloquant).
+        Utilise le client HTTP persistant pour de meilleures performances.
         
         Args:
-            mode: Consultation mode (compare, budget, policy, free)
-            message: User's message/question
-            context: Context dict (should contain OfferDTO/BookingDTO dicts)
-            on_success: Callback for successful response
-            on_error: Callback for errors
+            mode: Mode de consultation (compare, budget, policy, free)
+            message: Message/question de l'utilisateur
+            context: Dictionnaire de contexte (devrait contenir des dicts OfferDTO/BookingDTO)
+            on_success: Callback pour une réponse réussie
+            on_error: Callback pour les erreurs
         """
         async def _consult():
-            # Use fresh client with 130s timeout to handle slow AI responses
+            # Utiliser un nouveau client avec timeout 130s pour gérer les réponses IA lentes
             async with httpx.AsyncClient(timeout=130.0) as client:
                 response = await client.post(
                     f"{self.base_url}/api/ai/consult",
                     json={
                         "mode": mode,
                         "message": message,
-                        "context": context,  # Already formatted as ConsultContext dict
+                        "context": context,  # Déjà formaté comme dict ConsultContext
                         "language": "fr",
                         "stream": False
                     },
@@ -351,11 +351,11 @@ class AsyncApiClient(QObject):
         self.thread_pool.start(task)
     
     # ========================================================================
-    # Response Handling
+    # Gestion des Réponses
     # ========================================================================
     
     def _handle_response(self, response: httpx.Response):
-        """Handle HTTP response"""
+        """Traite la réponse HTTP"""
         try:
             data = response.json()
         except Exception:

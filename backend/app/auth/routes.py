@@ -1,3 +1,12 @@
+"""
+Fichier: backend/app/auth/routes.py
+Objectif: Définition des endpoints API pour l'authentification.
+Responsabilités:
+- Inscription des utilisateurs (/register).
+- Connexion et génération de token (/login).
+- Validation des entrées (Pydantic models).
+"""
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
@@ -11,19 +20,25 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class RegisterIn(BaseModel):
+    """Modèle d'entrée pour l'inscription."""
     username: str
     email: EmailStr
     password: str
 
 
 class LoginIn(BaseModel):
+    """Modèle d'entrée pour la connexion."""
     username_or_email: str
     password: str
 
 
 @router.post("/register")
 def register(data: RegisterIn, db: Session = Depends(get_db)):
-    # Vérifie doublons (plus clair que laisser exploser SQLite)
+    """
+    Endpoint d'inscription d'un nouvel utilisateur.
+    Vérifie l'unicité du nom d'utilisateur et de l'email avant de créer le compte.
+    """
+    # Vérifie doublons (plus clair que laisser exploser SQLAlchemy)
     if db.query(User).filter(User.username == data.username).first():
         raise HTTPException(status_code=400, detail="Username déjà utilisé")
     if db.query(User).filter(User.email == data.email).first():
@@ -50,6 +65,11 @@ def register(data: RegisterIn, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(data: LoginIn, db: Session = Depends(get_db)):
+    """
+    Endpoint de connexion.
+    Vérifie les identifiants et retourne un token JWT.
+    """
+    # Recherche par username OU email
     user = (
         db.query(User)
         .filter((User.username == data.username_or_email) | (User.email == data.username_or_email))

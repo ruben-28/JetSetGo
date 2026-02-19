@@ -1,13 +1,18 @@
 """
-JetSetGo API - Main Application
-FastAPI backend with API Gateway pattern.
+Fichier: backend/app/main.py
+Objectif: Point d'entrée principal de l'API FastAPI.
+Responsabilités: 
+- Configuration de l'application (CORS, Middleware).
+- Enregistrement des routeurs (Auth, Travel, AI).
+- Gestion globale des erreurs.
+- Vérification de l'état (Health Check).
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-# Load environment variables
+# Chargement des variables d'environnement
 load_dotenv()
 
 from app.auth.db import Base, engine
@@ -17,37 +22,37 @@ from app.ai.routes import router as ai_router
 
 
 # ============================================================================
-# Application Setup
+# Configuration de l'Application
 # ============================================================================
 
 app = FastAPI(
     title="JetSetGo API",
-    description="Travel search platform with AI assistance",
+    description="Plateforme de recherche de voyage avec assistance IA",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
 # ============================================================================
-# CORS Middleware (for Desktop App Integration)
+# Middleware CORS (Intégration App Desktop)
 # ============================================================================
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restrict in production
+    allow_origins=["*"],  # TODO: Restreindre en production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ============================================================================
-# Database Initialization
+# Initialisation de la Base de Données
 # ============================================================================
 
 # Base.metadata.create_all(bind=engine)
 
 # ============================================================================
-# Router Registration
+# Enregistrement des Routeurs
 # ============================================================================
 
 app.include_router(auth_router)
@@ -55,12 +60,15 @@ app.include_router(travel_router)
 app.include_router(ai_router)
 
 # ============================================================================
-# Health Check
+# Vérification de l'État (Health Check)
 # ============================================================================
 
 @app.get("/health")
 async def health():
-    """Health check endpoint"""
+    """
+    Endpoint de vérification de l'état de l'API.
+    Retourne le statut, le nom du service et la version.
+    """
     return {
         "status": "ok",
         "service": "JetSetGo API",
@@ -69,7 +77,7 @@ async def health():
 
 
 # ============================================================================
-# Debugging: Log Validation Errors
+# Débogage : Logs des Erreurs de Validation
 # ============================================================================
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -77,8 +85,12 @@ import logging
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
-    logging.error(f"Validation Error: {exc.errors()}")
-    logging.error(f"Request Body: {exc.body}")
+    """
+    Gestionnaire global des erreurs de validation (422).
+    Loggue les détails de l'erreur et le corps de la requête pour faciliter le débogage.
+    """
+    logging.error(f"Erreur de Validation : {exc.errors()}")
+    logging.error(f"Corps de la requête : {exc.body}")
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors(), "body": str(exc.body)},

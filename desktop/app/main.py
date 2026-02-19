@@ -7,16 +7,16 @@ from pathlib import Path
 def main():
     app = QApplication(sys.argv)
     
-    # Set app icon globally
+    # Définir l'icône de l'application globalement
     app.setWindowIcon(QIcon(str(Path(__file__).parent.parent / "assets" / "logo.jpg")))
 
-    # Create navigation manager
+    # Créer le gestionnaire de navigation
     nav = NavigationManager()
     
-    # Connect cleanup on app quit
+    # Connecter le nettoyage à la fermeture de l'application
     app.aboutToQuit.connect(nav.cleanup)
     
-    # Start app
+    # Démarrer l'application
     nav.start()
     
     sys.exit(app.exec())

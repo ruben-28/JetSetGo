@@ -1,6 +1,6 @@
 """
-AI Schemas Module
-Pydantic models for AI consultation requests and responses.
+Module de Schémas AI
+Modèles Pydantic pour les requêtes et réponses de consultation AI.
 """
 
 import os
@@ -9,11 +9,11 @@ from typing import Literal, Dict, Any, List, Optional
 
 
 # ============================================================================
-# DTOs (Data Transfer Objects) for Context
+# DTOs (Data Transfer Objects) pour le Contexte
 # ============================================================================
 
 class OfferDTO(BaseModel):
-    """Stable DTO for flight offer context"""
+    """DTO stable pour le contexte d'offre de vol"""
     id: str
     price: float
     currency: str = "EUR"
@@ -29,7 +29,7 @@ class OfferDTO(BaseModel):
 
 
 class BookingDTO(BaseModel):
-    """Stable DTO for booking context"""
+    """DTO stable pour le contexte de réservation"""
     booking_id: str
     offer_id: str
     status: str
@@ -41,8 +41,8 @@ class BookingDTO(BaseModel):
 
 class ConsultContext(BaseModel):
     """
-    Typed context for LLM consultation.
-    Validates required fields based on consultation mode.
+    Contexte typé pour la consultation LLM.
+    Valide les champs requis en fonction du mode de consultation.
     """
     selected_offers: Optional[List[OfferDTO]] = None
     booking_info: Optional[BookingDTO] = None
@@ -51,21 +51,21 @@ class ConsultContext(BaseModel):
 
 
 # ============================================================================
-# Request/Response Models
+# Modèles de Requête/Réponse
 # ============================================================================
 
 class ConsultRequest(BaseModel):
-    """Request model for LLM consultation"""
+    """Modèle de requête pour la consultation LLM"""
     mode: Literal["compare", "budget", "policy", "free"]
     message: str = Field(..., min_length=1)
     context: ConsultContext = Field(default_factory=ConsultContext)
     language: str = Field(default="fr", pattern="^(fr|en)$")
-    stream: bool = Field(default=False)  # Prepared for future streaming
+    stream: bool = Field(default=False)  # Préparé pour le streaming futur
     
     @field_validator("message")
     @classmethod
     def validate_message_length(cls, v: str) -> str:
-        """Validate message length against MAX_PROMPT_CHARS"""
+        """Valider la longueur du message par rapport à MAX_PROMPT_CHARS"""
         max_chars = int(os.getenv("MAX_PROMPT_CHARS", "8000"))
         if len(v) > max_chars:
             raise ValueError(f"Message trop long (max {max_chars} caractères)")
@@ -73,13 +73,13 @@ class ConsultRequest(BaseModel):
     
     @model_validator(mode="after")
     def validate_context_for_mode(self):
-        """Validate that context contains required fields for the mode"""
+        """Valider que le contexte contient les champs requis pour le mode"""
         if self.mode == "compare":
             if not self.context.selected_offers or len(self.context.selected_offers) < 2:
-                raise ValueError("Mode 'compare' requires at least 2 offers in context.selected_offers")
+                raise ValueError("Le mode 'compare' nécessite au moins 2 offres dans context.selected_offers")
         elif self.mode == "budget":
             if self.context.budget_max is None:
-                raise ValueError("Mode 'budget' requires context.budget_max")
+                raise ValueError("Le mode 'budget' nécessite context.budget_max")
         return self
     
     model_config = {
@@ -108,14 +108,14 @@ class ConsultRequest(BaseModel):
 
 
 class ConsultResponse(BaseModel):
-    """Response model for LLM consultation"""
+    """Modèle de réponse pour la consultation LLM"""
     answer: str
-    model: str  # Always present (e.g., "qwen2.5:3b" or "mock-ollama")
+    model: str  # Toujours présent (ex: "qwen2.5:3b" ou "mock-ollama")
     tokens_estimate: Optional[int] = None
-    sources: List[str] = Field(default_factory=list)  # Future RAG
+    sources: List[str] = Field(default_factory=list)  # RAG futur
     meta: Dict[str, Any] = Field(
         default_factory=lambda: {"mock": False}
-    )  # MUST include "mock" bool and optional "reason"
+    )  # DOIT inclure le booléen "mock" et le "reason" optionnel
     
     model_config = {
         "json_schema_extra": {

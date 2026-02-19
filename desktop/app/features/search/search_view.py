@@ -50,12 +50,12 @@ class SearchView(QWidget):
         header.addStretch()
         
         # Navigation buttons
-        flights_btn = QPushButton("Flights")
+        flights_btn = QPushButton("Vols")
         flights_btn.setObjectName("iconButton")
         flights_btn.setMinimumHeight(40)
         header.addWidget(flights_btn)
         
-        hotels_btn = QPushButton("Hotels")
+        hotels_btn = QPushButton("Hôtels")
         hotels_btn.setObjectName("iconButton")
         hotels_btn.setMinimumHeight(40)
         header.addWidget(hotels_btn)
@@ -74,7 +74,7 @@ class SearchView(QWidget):
         self.ai_btn.setCursor(Qt.PointingHandCursor)
         header.addWidget(self.ai_btn)
         
-        profile_btn = QPushButton("Profile")
+        profile_btn = QPushButton("Profil")
         profile_btn.setObjectName("iconButton")
         profile_btn.setMinimumHeight(40)
         header.addWidget(profile_btn)
@@ -306,7 +306,7 @@ class SearchView(QWidget):
         self.set_status(f"{len(offers)} vol(s) trouvé(s)")
 
     def get_selected_flight_data(self):
-        """Get data from the currently selected flight row."""
+        """Récupère les données de la ligne de vol actuellement sélectionnée."""
         selection_model = self.table.selectionModel()
         current_index = selection_model.currentIndex()
         row = current_index.row()
@@ -329,7 +329,7 @@ class SearchView(QWidget):
         }
 
     def update_autocomplete_suggestions(self, field_name: str, labels: list):
-        """Update the completer model for the specified field."""
+        """Met à jour le modèle de complétion pour le champ spécifié."""
         model = QStringListModel(labels)
         if field_name == "departure":
             self.departure_completer.setModel(model)

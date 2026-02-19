@@ -1,15 +1,20 @@
+"""
+Fichier: backend/app/cqrs/queries/trip_queries.py
+Objectif: Requêtes de lecture pour les voyages.
+"""
+
 from typing import List, Dict, Optional
 from app.auth.db import SessionLocal
 from app.auth.models import Trip, Booking
 
 class TripQueries:
     """
-    Read Side Queries for Trips.
+    Partie Lecture (Read Side) pour les Voyages (Trips).
     """
     
     def get_user_trips(self, user_id: int) -> List[Dict]:
         """
-        Get all trips for a user.
+        Récupérer tous les voyages d'un utilisateur.
         """
         session = SessionLocal()
         try:
@@ -20,7 +25,7 @@ class TripQueries:
 
     def get_trip_details(self, trip_id: str, user_id: int) -> Optional[Dict]:
         """
-        Get full details of a trip including all bookings.
+        Récupérer les détails complets d'un voyage incluant toutes les réservations.
         """
         session = SessionLocal()
         try:
@@ -53,7 +58,7 @@ class TripQueries:
             "type": booking.booking_type,
             "status": booking.status,
             "price": booking.price,
-            # Add dynamic fields based on type
+            # Ajout de champs dynamiques selon le type
             "details": {
                 "departure": booking.departure,
                 "destination": booking.destination,

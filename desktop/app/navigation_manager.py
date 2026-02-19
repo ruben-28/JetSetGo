@@ -19,31 +19,31 @@ import asyncio
 
 class NavigationManager:
     """
-    Manages navigation between views using QStackedWidget pattern.
+    Gère la navigation entre les vues en utilisant le modèle QStackedWidget.
     
-    All views are created once at startup and cached.
-    Navigation is performed via switch_to_view() - no recreation.
+    Toutes les vues sont créées une seule fois au démarrage et mises en cache.
+    La navigation s'effectue via switch_to_view() - pas de recréation.
     """
     
     def __init__(self):
         self.api_client = AsyncApiClient(base_url="http://127.0.0.1:8000")
         self.main_window = MainWindow()
         
-        # Create all views ONCE
+        # Créer toutes les vues UNE SEULE FOIS
         self._create_views()
         
     def _create_views(self):
-        """Initialize all views once"""
-        # Login
+        """Initialise toutes les vues une seule fois"""
+        # Connexion
         self.login_view = LoginView()
         self.login_presenter = LoginPresenter(self.login_view, self.api_client)
         self.login_presenter.login_successful.connect(self._on_login_successful)
         self.main_window.add_view("login", self.login_view)
         
-        # Packages (NEW - default after login)
+        # Packages (NOUVEAU - défaut après connexion)
         self.packages_view = PackagesView(api_client=self.api_client)
         self.packages_presenter = PackagesPresenter(self.packages_view, self.api_client)
-        # Wire navigation from packages view
+        # Câblage de la navigation depuis la vue packages
         self.packages_view.flights_requested.connect(lambda: self.main_window.switch_to_view("flights"))
         self.packages_view.hotels_requested.connect(lambda: self.main_window.switch_to_view("hotels"))
         self.packages_view.history_requested.connect(lambda: self.main_window.switch_to_view("history"))
@@ -51,10 +51,10 @@ class NavigationManager:
         self.main_window.add_view("packages", self.packages_view)
         
         
-        # Flights (NEW)
+        # Vols (NOUVEAU)
         self.flights_view = FlightsView(api_client=self.api_client)
         self.flights_presenter = FlightsPresenter(self.flights_view, self.api_client)
-        # Wire navigation from flights view
+        # Câblage de la navigation depuis la vue vols
         self.flights_view.packages_requested.connect(lambda: self.main_window.switch_to_view("packages"))
         self.flights_view.hotels_requested.connect(lambda: self.main_window.switch_to_view("hotels"))
         self.flights_view.history_requested.connect(lambda: self.main_window.switch_to_view("history"))
@@ -62,17 +62,17 @@ class NavigationManager:
         self.main_window.add_view("flights", self.flights_view)
         
         
-        # Hotels (NEW)
+        # Hôtels (NOUVEAU)
         self.hotels_view = HotelsView(api_client=self.api_client)
         self.hotels_presenter = HotelsPresenter(self.hotels_view, self.api_client)
-        # Wire navigation from hotels view
+        # Câblage de la navigation depuis la vue hôtels
         self.hotels_view.packages_requested.connect(lambda: self.main_window.switch_to_view("packages"))
         self.hotels_view.flights_requested.connect(lambda: self.main_window.switch_to_view("flights"))
         self.hotels_view.history_requested.connect(lambda: self.main_window.switch_to_view("history"))
         self.hotels_view.assistant_requested.connect(lambda: self.main_window.switch_to_view("assistant"))
         self.main_window.add_view("hotels", self.hotels_view)
         
-        # Search (kept for backward compatibility, but packages is now the main view)
+        # Recherche (conservé pour rétrocompatibilité, mais packages est maintenant la vue principale)
         self.search_view = SearchView()
         self.search_presenter = SearchPresenter(self.search_view, self.api_client)
         self.search_view.history_btn.clicked.connect(lambda: self.main_window.switch_to_view("history"))
@@ -80,11 +80,11 @@ class NavigationManager:
             self.search_view.ai_btn.clicked.connect(lambda: self.main_window.switch_to_view("assistant"))
         self.main_window.add_view("search", self.search_view)
         
-        # History
+        # Historique
         self.history_view = HistoryView()
         self.history_presenter = HistoryPresenter(self.history_view, self.api_client)
         self.history_presenter.back_to_search.connect(lambda: self.main_window.switch_to_view("packages"))
-        # Add view with callback to reload bookings when shown
+        # Ajouter la vue avec callback pour recharger les réservations lors de l'affichage
         self.main_window.add_view("history", self.history_view, 
                                   on_show_callback=self.history_presenter.reload_bookings)
         
@@ -93,7 +93,7 @@ class NavigationManager:
         self.assistant_presenter = AssistantPresenter(self.assistant_view, self.api_client)
         self.assistant_view.back_requested.connect(lambda: self.main_window.switch_to_view("packages"))
         
-        # Connect assistant navigation signals to switch views with prefill
+        # Connecter les signaux de navigation de l'assistant pour changer de vue avec préremplissage
         self.assistant_presenter.navigate_to_flights.connect(self._navigate_to_flights)
         self.assistant_presenter.navigate_to_hotels.connect(self._navigate_to_hotels)
         self.assistant_presenter.navigate_to_packages.connect(self._navigate_to_packages)
@@ -102,37 +102,37 @@ class NavigationManager:
         self.main_window.add_view("assistant", self.assistant_view)
     
     def _navigate_to_flights(self, prefill_data: dict):
-        """Navigate to flights view with prefilled data"""
-        # TODO: Prefill destination in flights view
-        # For now, just switch to view
+        """Navigue vers la vue vols avec préremplissage des données"""
+        # TODO: Préremplir la destination dans la vue vols
+        # Pour l'instant, change juste de vue
         self.main_window.switch_to_view("flights")
     
     def _navigate_to_hotels(self, prefill_data: dict):
-        """Navigate to hotels view with prefilled data"""
-        # TODO: Prefill destination in hotels view
+        """Navigue vers la vue hôtels avec préremplissage des données"""
+        # TODO: Préremplir la destination dans la vue hôtels
         self.main_window.switch_to_view("hotels")
     
     def _navigate_to_packages(self, prefill_data: dict):
-        """Navigate to packages view with prefilled data"""
-        # TODO: Prefill destination in packages view
+        """Navigue vers la vue packages avec préremplissage des données"""
+        # TODO: Préremplir la destination dans la vue packages
         self.main_window.switch_to_view("packages")
 
     def _navigate_to_history(self, prefill_data: dict):
-        """Navigate to history view"""
+        """Navigue vers la vue historique"""
         self.main_window.switch_to_view("history")
     
     def start(self):
-        """Start application"""
+        """Démarre l'application"""
         self.main_window.switch_to_view("login")
         self.main_window.showMaximized()
     
     def _on_login_successful(self, user_data):
-        """Handle successful login -> Switch to Packages (home page)"""
+        """Gère la connexion réussie -> Bascule vers Packages (page d'accueil)"""
         self.main_window.switch_to_view("packages")
     
     def cleanup(self):
-        """Cleanup resources on app shutdown"""
-        # Close HTTP client properly
+        """Nettoyage des ressources à la fermeture de l'application"""
+        # Fermer le client HTTP proprement
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self.api_client.close())

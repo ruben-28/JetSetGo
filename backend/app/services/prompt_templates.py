@@ -1,6 +1,6 @@
 """
-Prompt Templates Module
-System and user prompt templates for different consultation modes.
+Module de Templates de Prompt
+Templates de prompts système et utilisateur pour différents modes de consultation.
 """
 
 from typing import Dict, Any, List
@@ -8,21 +8,21 @@ from typing import Dict, Any, List
 
 class PromptTemplates:
     """
-    Centralized prompt templates for LLM consultation modes.
+    Templates de prompts centralisés pour les modes de consultation LLM.
     
-    All prompts are in French and oriented towards actionable decisions.
+    Tous les prompts sont en Français et orientés vers des décisions actionnables.
     """
     
     @staticmethod
     def get_system_prompt(mode: str) -> str:
         """
-        Get system prompt for a consultation mode.
+        Obtenir le prompt système pour un mode de consultation.
         
         Args:
-            mode: Consultation mode (compare, budget, policy, free)
+            mode: Mode de consultation (compare, budget, policy, free)
         
         Returns:
-            System prompt string
+            Chaîne du prompt système
         """
         prompts = {
             "compare": (
@@ -64,15 +64,15 @@ class PromptTemplates:
     @staticmethod
     def build_user_prompt(mode: str, message: str, context: Dict[str, Any]) -> str:
         """
-        Build user prompt by combining message and context for a mode.
+        Construire le prompt utilisateur en combinant message et contexte pour un mode.
         
         Args:
-            mode: Consultation mode
-            message: User's message/question
-            context: Context dict (offers, booking, budget, etc.)
+            mode: Mode de consultation
+            message: Message/question de l'utilisateur
+            context: Dictionnaire de contexte (offres, réservation, budget, etc.)
         
         Returns:
-            Formatted user prompt
+            Prompt utilisateur formaté
         """
         if mode == "compare":
             return PromptTemplates._build_compare_prompt(message, context)
@@ -85,13 +85,13 @@ class PromptTemplates:
     
     @staticmethod
     def _build_compare_prompt(message: str, context: Dict[str, Any]) -> str:
-        """Build prompt for offer comparison"""
+        """Construire le prompt pour la comparaison d'offres"""
         offers = context.get("selected_offers", [])
         
         if not offers:
             return message
         
-        # Build offers table
+        # Construire le tableau des offres
         offers_text = "Voici les offres à comparer:\n\n"
         for i, offer in enumerate(offers, 1):
             offers_text += f"**Offre {i} - {offer.get('airline', 'N/A')}**\n"
@@ -110,7 +110,7 @@ class PromptTemplates:
     
     @staticmethod
     def _build_budget_prompt(message: str, context: Dict[str, Any]) -> str:
-        """Build prompt for budget consultation"""
+        """Construire le prompt pour la consultation budgétaire"""
         budget_max = context.get("budget_max")
         user_prefs = context.get("user_prefs", {})
         
@@ -127,14 +127,14 @@ class PromptTemplates:
     
     @staticmethod
     def _build_policy_prompt(message: str, context: Dict[str, Any]) -> str:
-        """Build prompt for policy explanation"""
-        # Policy text is usually in the message itself
+        """Construire le prompt pour l'explication de politique"""
+        # Le texte de la politique est généralement dans le message lui-même
         return f"Politique à analyser:\n\n{message}"
     
     @staticmethod
     def _build_free_prompt(message: str, context: Dict[str, Any]) -> str:
-        """Build prompt for free-form consultation"""
-        # Add any available context
+        """Construire le prompt pour la consultation libre"""
+        # Ajouter tout contexte disponible
         context_text = ""
         
         if context.get("user_prefs"):

@@ -1,31 +1,31 @@
 """
-Database Configuration Module
-Centralized configuration for SQL Server connection using pyodbc.
+Module de Configuration Base de Données
+Configuration centralisée pour la connexion SQL Server via pyodbc.
 """
 
 import os
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
-# Load environment variables
+# Chargement des variables d'environnement
 load_dotenv()
 
 
 def get_database_url() -> str:
     """
-    Generate SQL Server DATABASE_URL using odbc_connect format.
+    Génère l'URL DATABASE_URL SQL Server utilisant le format odbc_connect.
     
-    This format avoids issues with special characters in passwords.
-    Supports ODBC Driver 18 (preferred) or falls back to 17.
+    Ce format évite les problèmes avec les caractères spéciaux dans les mots de passe.
+    Supporte ODBC Driver 18 (préféré) ou se replie sur 17.
     
     Returns:
-        str: SQLAlchemy connection string for SQL Server
+        str: Chaîne de connexion SQLAlchemy pour SQL Server
         
     Environment Variables Required:
-        - DB_SERVER: SQL Server hostname (e.g., jetsetgo_db.mssql.somee.com)
-        - DB_NAME: Database name (e.g., jetsetgo_db)
-        - DB_USER: SQL Server login (e.g., ethan5_SQLLogin_1)
-        - DB_PASSWORD: SQL Server password
+        - DB_SERVER: Hôte SQL Server (ex: jetsetgo_db.mssql.somee.com)
+        - DB_NAME: Nom de la base (ex: jetsetgo_db)
+        - DB_USER: Login SQL Server (ex: ethan5_SQLLogin_1)
+        - DB_PASSWORD: Mot de passe SQL Server
     """
     server = os.getenv("DB_SERVER", "jetsetgo_db.mssql.somee.com")
     database = os.getenv("DB_NAME", "jetsetgo_db")
@@ -34,15 +34,15 @@ def get_database_url() -> str:
     
     if not password:
         raise ValueError(
-            "DB_PASSWORD environment variable is required. "
-            "Please set it in your .env file."
+            "La variable d'environnement DB_PASSWORD est requise. "
+            "Veuillez la définir dans votre fichier .env."
         )
     
-    # Try ODBC Driver 18 first (newer), fallback to 17
-    # TrustServerCertificate=yes is required for self-signed certificates (common on somee)
+    # Essayer ODBC Driver 18 d'abord (plus récent), repli sur 17
+    # TrustServerCertificate=yes est requis pour les certificats auto-signés (commun sur somee)
     driver = "ODBC Driver 18 for SQL Server"
     
-    # Build connection string with odbc_connect format
+    # Construire la chaîne de connexion avec le format odbc_connect
     connection_string = (
         f"DRIVER={{{driver}}};"
         f"SERVER={server};"
@@ -53,12 +53,12 @@ def get_database_url() -> str:
         f"TrustServerCertificate=yes;"
     )
     
-    # URL-encode the connection string
+    # Encoder la chaîne de connexion pour l'URL
     params = quote_plus(connection_string)
     
-    # Return SQLAlchemy-compatible URL
+    # Retourner l'URL compatible SQLAlchemy
     return f"mssql+pyodbc:///?odbc_connect={params}"
 
 
-# Global DATABASE_URL
+# DATABASE_URL globale
 DATABASE_URL = get_database_url()

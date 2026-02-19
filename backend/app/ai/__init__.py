@@ -1,5 +1,5 @@
 """
-AI Module
+Module AI
 """
 
 from .routes import router

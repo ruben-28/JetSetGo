@@ -1,6 +1,6 @@
 """
-Assistant Presenter Module
-Business logic for AI assistant interface with navigation support.
+Module Assistant Presenter
+Logique métier pour l'interface de l'assistant IA avec support de navigation.
 """
 
 from PySide6.QtCore import QObject, Signal
@@ -9,17 +9,17 @@ from PySide6.QtWidgets import QApplication
 
 class AssistantPresenter(QObject):
     """
-    Presenter for AI Assistant view.
+    Présenteur pour la vue Assistant IA.
     
-    Responsibilities:
-    - Handle user interactions
-    - Manage API calls to assistant endpoint
-    - Handle navigation actions (flights, hotels, packages)
-    - Update view with responses
-    - Manage conversation history
+    Responsabilités :
+    - Gérer les interactions utilisateur
+    - Gérer les appels API vers le endpoint de l'assistant
+    - Gérer les actions de navigation (vols, hôtels, packages)
+    - Mettre à jour la vue avec les réponses
+    - Gérer l'historique de conversation
     """
     
-    # Navigation signals
+    # Signaux de navigation
     navigate_to_flights = Signal(dict)  # {destination, travelers}
     navigate_to_hotels = Signal(dict)   # {destination}
     navigate_to_packages = Signal(dict)  # {destination}
@@ -29,24 +29,24 @@ class AssistantPresenter(QObject):
         super().__init__()
         self.view = view
         self.api_client = api_client
-        self.last_response = ""  # For copy function
+        self.last_response = ""  # Pour la fonction copier
         
-        # Connect view signals
+        # Connecter les signaux de la vue
         self.view.send_requested.connect(self.on_send_message)
         self.view.copy_requested.connect(self.on_copy_response)
         self.view.new_conversation_requested.connect(self.on_new_conversation)
     
     def on_send_message(self, mode: str, message: str):
-        """Handle send message request (updated for new assistant API)"""
-        # For new assistant: ignore mode, use direct message
-        # Add user message to UI immediately
+        """Gère la demande d'envoi de message (mis à jour pour la nouvelle API assistant)"""
+        # Pour le nouvel assistant : ignorer le mode, utiliser le message direct
+        # Ajouter le message utilisateur à l'UI immédiatement
         self.view.add_user_message(message)
         self.view.clear_status()
         
-        # Show loading
+        # Afficher chargement
         self.view.set_loading(True)
         
-        # Call new assistant API
+        # Appeler la nouvelle API assistant
         self.api_client.query_assistant_async(
             message=message,
             on_success=self._on_assistant_response,
@@ -54,20 +54,20 @@ class AssistantPresenter(QObject):
         )
     
     def _on_assistant_response(self, response):
-        """Handle assistant response with navigation support"""
+        """Gère la réponse de l'assistant avec support de navigation"""
         self.view.set_loading(False)
         
-        # Extract response data
+        # Extraire les données de réponse
         action = response.get("action", "chat_only")
         target_view = response.get("target_view")
         prefill_data = response.get("prefill_data", {})
         response_text = response.get("response_text", "")
         
-        # Add AI response to conversation
+        # Ajouter la réponse IA à la conversation
         self.view.add_ai_message(response_text, "assistant")
         self.last_response = response_text
         
-        # Handle navigation actions
+        # Gérer les actions de navigation
         if action == "navigate":
             if target_view == "flights":
                 self.navigate_to_flights.emit(prefill_data)
@@ -79,10 +79,10 @@ class AssistantPresenter(QObject):
                 self.navigate_to_history.emit(prefill_data)
     
     def on_success(self, response):
-        """Handle successful LLM response"""
+        """Gère la réponse LLM réussie"""
         self.view.set_loading(False)
         
-        # Check if mock mode
+        # Vérifier si mode mock
         meta = response.get("meta", {})
         if meta.get("mock", False):
             reason = meta.get("reason", "service_unavailable")
@@ -90,57 +90,57 @@ class AssistantPresenter(QObject):
         else:
             self.view.hide_demo_banner()
         
-        # Add AI response to conversation
+        # Ajouter la réponse IA à la conversation
         answer = response.get("answer", "Pas de réponse")
         model = response.get("model", "unknown")
         self.view.add_ai_message(answer, model)
         
-        # Store for copy function
+        # Stocker pour la fonction copier
         self.last_response = answer
     
     def on_error(self, error):
-        """Handle API error"""
+        """Gère l'erreur API"""
         self.view.set_loading(False)
         self.view.show_error(f"Erreur: {str(error)}")
     
     def on_copy_response(self):
-        """Copy last AI response to clipboard"""
+        """Copier la dernière réponse IA dans le presse-papiers"""
         if self.last_response:
             clipboard = QApplication.clipboard()
             clipboard.setText(self.last_response)
             self.view.show_success("Réponse copiée!")
     
     def on_new_conversation(self):
-        """Clear conversation and reset"""
+        """Effacer la conversation et réinitialiser"""
         self.view.clear_conversation()
         self.last_response = ""
         self.view.show_success("Nouvelle conversation démarrée")
     
     def _build_context(self) -> dict:
         """
-        Build context dict with proper DTOs.
-        Retrieves cached context from session/navigation if available.
+        Construit le dictionnaire de contexte avec les bons DTOs.
+        Récupère le contexte mis en cache depuis la session/navigation si disponible.
         
-        Returns a valid ConsultContext structure.
+        Retourne une structure ConsultContext valide.
         """
-        # For now, return empty but valid ConsultContext
-        # This will be populated when navigating from SearchView with offers
+        # Pour l'instant, retourne un ConsultContext vide mais valide
+        # Cela sera rempli lors de la navigation depuis SearchView avec des offres
         return {
-            "selected_offers": None,  # Will be list of OfferDTO dicts when set
-            "booking_info": None,     # Will be BookingDTO dict when set
-            "budget_max": None,       # Will be int when set
-            "user_prefs": {}          # Always a dict
+            "selected_offers": None,  # Sera une liste de dicts OfferDTO une fois défini
+            "booking_info": None,     # Sera un dict BookingDTO une fois défini
+            "budget_max": None,       # Sera un int une fois défini
+            "user_prefs": {}          # Toujours un dict
         }
     
     def set_initial_context(self, mode: str, context: dict):
         """
-        Set initial context when navigating from another view.
+        Définit le contexte initial lors de la navigation depuis une autre vue.
         
         Args:
-            mode: Pre-selected mode (compare, budget, policy, free)
-            context: Pre-filled context (offers, booking, etc.)
+            mode: Mode pré-sélectionné (compare, budget, policy, free)
+            context: Contexte pré-rempli (offres, réservation, etc.)
         """
-        # Map mode to selector index
+        # Mapper le mode à l'index du sélecteur
         mode_index_map = {
             "compare": 0,
             "budget": 1,
@@ -151,6 +151,6 @@ class AssistantPresenter(QObject):
         if mode in mode_index_map:
             self.view.set_mode(mode_index_map[mode])
         
-        # Store context for next API call
-        # This would be used by _build_context()
-        # TODO: Store in instance variable or session
+        # Stocker le contexte pour le prochain appel API
+        # Ceci serait utilisé par _build_context()
+        # TODO: Stocker dans une variable d'instance ou session

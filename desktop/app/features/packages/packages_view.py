@@ -9,16 +9,16 @@ from features.shared.city_autocomplete import CityAutocompleteLineEdit
 
 
 class PackageCard(QFrame):
-    """Modern card widget for displaying a package offer."""
+    """Widget carte moderne pour afficher une offre de package."""
     
-    book_clicked = Signal(dict)  # Emits package data when book button clicked
+    book_clicked = Signal(dict)  # Émet les données du package au clic sur réserver
     
     def __init__(self, package: dict):
         super().__init__()
         self.package = package
         self.setObjectName("packageCard")
         
-        # Card styling with glassmorphism
+        # Style de la carte avec glassmorphism
         self.setStyleSheet("""
             QFrame#packageCard {
                 background: rgba(220, 224, 228, 0.7);
@@ -131,7 +131,7 @@ class PackageCard(QFrame):
         layout.addLayout(price_section)
     
     def _add_detail_row(self, grid: QGridLayout, row: int, label: str, value: str):
-        """Add a detail row to the grid."""
+        """Ajoute une ligne de détail à la grille."""
         label_widget = QLabel(label)
         label_widget.setStyleSheet("""
             color: #57606a;
@@ -154,9 +154,9 @@ class PackageCard(QFrame):
 
 class PackagesView(QWidget):
     """
-    Modern Packages View - Shows combined hotel + flight packages
+    Vue Packages Moderne - Affiche les packages combinés vol + hôtel
     """
-    # Signals for navigation
+    # Signaux pour la navigation
     flights_requested = Signal()
     hotels_requested = Signal()
     history_requested = Signal()
@@ -348,26 +348,26 @@ class PackagesView(QWidget):
         main_layout.addWidget(scroll)
 
     def set_status(self, text: str):
-        """Set status message."""
+        """Définit le message de statut."""
         self.status.setText(text)
 
     def show_error(self, message: str):
-        """Show error dialog."""
+        """Affiche une boîte de dialogue d'erreur."""
         QMessageBox.critical(self, "Erreur", message)
     
     def show_success(self, message: str):
-        """Show success dialog."""
+        """Affiche une boîte de dialogue de succès."""
         QMessageBox.information(self, "Succès", message)
 
     def clear_results(self):
-        """Clear all package cards."""
+        """Efface toutes les cartes de packages."""
         while self.cards_layout.count() > 1:  # Keep the stretch
             item = self.cards_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
     def display_packages(self, packages: list):
-        """Display package results as cards."""
+        """Affiche les résultats de packages sous forme de cartes."""
         self.clear_results()
         
         if packages:
@@ -402,5 +402,5 @@ class PackagesView(QWidget):
             self.set_status("0 package trouvé")
     
     def set_book_handler(self, handler):
-        """Set the handler for book button clicks."""
+        """Définit le gestionnaire pour les clics sur le bouton réserver."""
         self._book_handler = handler

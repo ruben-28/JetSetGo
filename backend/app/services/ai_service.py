@@ -1,6 +1,6 @@
 """
-AI Service Module
-Business logic for AI-related operations (text analysis, NLP) and LLM consultation.
+Fichier: backend/app/services/ai_service.py
+Objectif: Logique métier pour les opérations liées à l'IA (analyse de texte, NLP) et consultation de LLM.
 """
 
 import os
@@ -12,33 +12,33 @@ from app.services.prompt_templates import PromptTemplates
 
 class AIService:
     """
-    Service layer for AI operations.
+    Couche de service pour les opérations d'IA.
     
-    Responsibilities:
-    - Implement business logic for text analysis (HuggingFace)
-    - Implement business logic for LLM consultation (Ollama/OpenAI)
-    - Validate text inputs
-    - Orchestrate gateway calls
-    - Build prompts from templates
+    Responsabilités:
+    - Implémenter la logique d'analyse de texte (HuggingFace).
+    - Implémenter la logique de consultation LLM (Ollama/OpenAI).
+    - Valider les entrées textuelles.
+    - Orchestrer les appels aux gateways.
+    - Construire les prompts à partir des templates.
     """
     
     def __init__(
         self,
-        llm_provider: LLMProvider,  # REQUIRED for consult()
-        hf_gateway: Optional[HFGateway] = None  # Optional (for analyze_travel_intent)
+        llm_provider: LLMProvider,  # REQUIS pour consult()
+        hf_gateway: Optional[HFGateway] = None  # Optionnel (pour analyze_travel_intent)
     ):
         """
-        Initialize service with dependencies.
+        Initialise le service avec les dépendances.
         
         Args:
-            llm_provider: LLM provider instance (Ollama, OpenAI, etc.) - REQUIRED
-            hf_gateway: HuggingFace gateway instance - Optional
+            llm_provider: Instance du provider LLM (Ollama, OpenAI, etc.) - REQUIS
+            hf_gateway: Instance du gateway HuggingFace - Optionnel
         """
         self.llm_provider = llm_provider
         self.hf_gateway = hf_gateway
     
     # ========================================================================
-    # LLM Consultation Methods (NEW)
+    # Méthodes de Consultation LLM (NOUVEAU)
     # ========================================================================
     
     async def consult(
@@ -49,29 +49,29 @@ class AIService:
         language: str = "fr"
     ) -> Dict[str, Any]:
         """
-        Consult LLM for travel decision assistance.
+        Consulter le LLM pour une assistance au voyage.
         
         Args:
-            mode: Consultation mode (compare, budget, policy, free)
-            message: User's message/question
-            context: Typed context dict (from ConsultContext)
-            language: Response language (default: fr)
+            mode: Mode de consultation (compare, budget, policy, free)
+            message: Message/Question de l'utilisateur
+            context: Dictionnaire de contexte typé (depuis ConsultContext)
+            language: Langue de réponse (défaut: fr)
         
         Returns:
-            Dict with keys: answer, model, tokens_estimate, sources, meta
+            Dict avec clés: answer, model, tokens_estimate, sources, meta
         
         Raises:
-            ValueError: On validation errors
-            HTTPException: On service errors
+            ValueError: En cas d'erreur de validation
+            HTTPException: En cas d'erreur du service
         """
-        # 1. Validate prompt length
+        # 1. Valider la longueur du prompt
         self._validate_prompt(message)
         
-        # 2. Build prompts from templates
+        # 2. Construire les prompts depuis les templates
         system_prompt = PromptTemplates.get_system_prompt(mode)
         user_prompt = PromptTemplates.build_user_prompt(mode, message, context)
         
-        # 3. Call LLM provider
+        # 3. Appeler le provider LLM
         try:
             result = await self.llm_provider.chat_completion(
                 messages=[
@@ -84,70 +84,70 @@ class AIService:
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"LLM request failed: {str(e)}"
+                detail=f"Échec requête LLM : {str(e)}"
             )
         
-        # 4. Return with model and meta ALWAYS present
+        # 4. Retourner avec modèle et méta TOUJOURS présents
         return {
             "answer": result["content"],
             "model": result.get("model", "unknown"),
             "tokens_estimate": result.get("tokens"),
-            "sources": [],  # Future RAG
+            "sources": [],  # Futur RAG
             "meta": result.get("meta", {"mock": False})
         }
     
     def _validate_prompt(self, message: str):
         """
-        Validate prompt length.
+        Valider la longueur du prompt.
         
         Args:
-            message: User message to validate
+            message: Message utilisateur à valider
         
         Raises:
-            ValueError: If message exceeds MAX_PROMPT_CHARS
+            ValueError: Si le message dépasse MAX_PROMPT_CHARS
         """
         max_chars = int(os.getenv("MAX_PROMPT_CHARS", "8000"))
         if len(message) > max_chars:
-            raise ValueError(f"Message too long ({len(message)} chars, max {max_chars})")
+            raise ValueError(f"Message trop long ({len(message)} chars, max {max_chars})")
     
     # ========================================================================
-    # Existing Methods (HuggingFace - unchanged)
+    # Méthodes Existantes (HuggingFace - inchangé)
     # ========================================================================
     
     async def analyze_travel_intent(self, text: str) -> Dict:
         """
-        Analyze user text for travel intent and sentiment.
+        Analyser le texte utilisateur pour l'intention de voyage et le sentiment.
         
-        Note: Requires hf_gateway to be set. This is the OLD method.
+        Note: Nécessite hf_gateway configuré. (Méthode ANCIENNE)
         
         Args:
-            text: User input text (travel-related)
+            text: Texte d'entrée utilisateur
         
         Returns:
-            Analysis result with sentiment, confidence, keywords, travel_intent
+            Résultat d'analyse avec sentiment, confiance, mots-clés, intention voyage
         
         Raises:
-            HTTPException: On validation errors
+            HTTPException: En cas d'erreur de validation
         """
         if not self.hf_gateway:
             raise HTTPException(
                 status_code=500,
-                detail="HuggingFace gateway not configured for this service instance"
+                detail="Gateway HuggingFace non configurée pour cette instance de service"
             )
         
-        # 1. Validate input
+        # 1. Valider l'entrée
         self._validate_text(text)
         
-        # 2. Call gateway for sentiment analysis
+        # 2. Appeler le gateway pour l'analyse de sentiment
         analysis = await self.hf_gateway.analyze_text(text)
         
-        # 3. Add travel-specific interpretation
+        # 3. Ajouter l'interprétation spécifique voyage
         travel_intent = self._interpret_travel_intent(
             analysis["sentiment"],
             analysis["keywords"]
         )
         
-        # 4. Return enriched result
+        # 4. Retourner le résultat enrichi
         return {
             "sentiment": analysis["sentiment"],
             "confidence": analysis["confidence"],
@@ -157,21 +157,21 @@ class AIService:
         }
     
     # ========================================================================
-    # Business Logic & Validation (HuggingFace - unchanged)
+    # Logique Métier & Validation (HuggingFace - inchangé)
     # ========================================================================
     
     def _validate_text(self, text: str):
         """
-        Validate text input for HF analysis.
+        Valider le texte pour l'analyse HF.
         
-        Rules:
-        - Text must be between 10 and 500 characters
-        - Text must not be empty or only whitespace
+        Règles:
+        - Le texte doit faire entre 10 et 500 caractères.
+        - Le texte ne doit pas être vide.
         """
         if not text or not text.strip():
             raise HTTPException(
                 status_code=400,
-                detail="Text cannot be empty"
+                detail="Le texte ne peut pas être vide"
             )
         
         text_length = len(text.strip())
@@ -179,32 +179,32 @@ class AIService:
         if text_length < 10:
             raise HTTPException(
                 status_code=400,
-                detail="Text must be at least 10 characters long"
+                detail="Le texte doit contenir au moins 10 caractères"
             )
         
         if text_length > 500:
             raise HTTPException(
                 status_code=400,
-                detail="Text must not exceed 500 characters"
+                detail="Le texte ne doit pas dépasser 500 caractères"
             )
     
     def _interpret_travel_intent(self, sentiment: str, keywords: list) -> str:
         """
-        Interpret sentiment and keywords for travel context.
+        Interpréter le sentiment et les mots-clés dans un contexte voyage.
         
-        Maps sentiment to travel intent categories:
+        Mappe le sentiment vers des catégories d'intention :
         - positive → "enthusiastic_traveler"
         - neutral → "curious_explorer"
         - negative → "concerned_traveler"
         
         Args:
-            sentiment: Sentiment from AI analysis
-            keywords: Extracted keywords
+            sentiment: Sentiment de l'analyse IA
+            keywords: Mots-clés extraits
         
         Returns:
-            Travel intent category
+            Catégorie d'intention voyage
         """
-        # Map sentiment to travel intent
+        # Map sentiment vers intention voyage
         intent_map = {
             "positive": "enthusiastic_traveler",
             "neutral": "curious_explorer",
@@ -213,7 +213,7 @@ class AIService:
         
         base_intent = intent_map.get(sentiment, "curious_explorer")
         
-        # Refine based on keywords
+        # Affiner avec les mots-clés
         if any(kw in keywords for kw in ["beach", "relax", "peaceful", "warm"]):
             return f"{base_intent}_seeking_relaxation"
         elif any(kw in keywords for kw in ["adventure", "explore", "mountain", "nature"]):

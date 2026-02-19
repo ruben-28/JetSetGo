@@ -1,6 +1,6 @@
 """
-OpenAI Provider (Placeholder)
-Future implementation for OpenAI/ChatGPT API.
+Provider OpenAI (Placeholder)
+Implémentation future pour l'API OpenAI/ChatGPT.
 """
 
 from typing import Dict, Any, List
@@ -9,18 +9,18 @@ from .llm_provider import LLMProvider
 
 class OpenAIProvider(LLMProvider):
     """
-    Placeholder for OpenAI provider implementation.
+    Placeholder pour l'implémentation du fournisseur OpenAI.
     
-    Future implementation will use OpenAI's Chat Completions API.
+    L'implémentation future utilisera l'API Chat Completions d'OpenAI.
     
-    Configuration (when implemented):
-        - OPENAI_API_KEY: OpenAI API key
-        - OPENAI_MODEL: Model name (e.g., gpt-4o-mini, gpt-4)
-        - OPENAI_TIMEOUT: Request timeout in seconds
+    Configuration (une fois implémentée) :
+        - OPENAI_API_KEY : Clé API OpenAI
+        - OPENAI_MODEL : Nom du modèle (ex: gpt-4o-mini, gpt-4)
+        - OPENAI_TIMEOUT : Timeout de requête en secondes
     """
     
     def __init__(self):
-        """Initialize placeholder provider"""
+        """Initialiser le provider placeholder"""
         pass
     
     async def chat_completion(
@@ -30,20 +30,20 @@ class OpenAIProvider(LLMProvider):
         max_tokens: int = 1000
     ) -> Dict[str, Any]:
         """
-        Placeholder for OpenAI chat completion.
+        Placeholder pour la complétion de chat OpenAI.
         
-        To implement:
-        1. Install openai package: pip install openai
-        2. Use openai.AsyncOpenAI client
-        3. Call client.chat.completions.create()
-        4. Handle rate limits and errors
-        5. Return standardized response format
+        À implémenter :
+        1. Installer le package openai : pip install openai
+        2. Utiliser le client openai.AsyncOpenAI
+        3. Appeler client.chat.completions.create()
+        4. Gérer les limites de débit et les erreurs
+        5. Retourner le format de réponse standardisé
         """
         raise NotImplementedError(
-            "OpenAI provider not yet implemented. "
-            "Use LLM_PROVIDER=ollama in environment variables."
+            "Le fournisseur OpenAI n'est pas encore implémenté. "
+            "Utilisez LLM_PROVIDER=ollama dans les variables d'environnement."
         )
     
     def is_mock_mode(self) -> bool:
-        """OpenAI provider is always 'mock' until implemented"""
+        """Le fournisseur OpenAI est toujours en 'mock' jusqu'à son implémentation"""
         return True
