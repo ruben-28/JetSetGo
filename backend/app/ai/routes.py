@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import logging
 
-from app.gateway import HFGateway
+from app.gateway import HuggingFaceGateway
 from app.services import AIService
 from app.ai.schemas import ConsultRequest, ConsultResponse
 from app.ai.provider_factory import get_llm_provider

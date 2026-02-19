@@ -212,7 +212,9 @@ class BaseGateway(ABC):
         Raises:
             GatewayError: After all retries exhausted
         """
-        max_retries = max_retries or self._config["max_retries"]
+        # Use config default if max_retries is None (explicit 0 should be respected)
+        if max_retries is None:
+            max_retries = self._config["max_retries"]
         retry_delay = self._config["retry_delay"]
         
         last_exception = None

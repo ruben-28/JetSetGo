@@ -74,7 +74,8 @@ class AsyncApiClient(QObject):
     async def _get_http_client(self) -> httpx.AsyncClient:
         """Get or create persistent HTTP client (lazy init)"""
         if self._http_client is None or self._http_client.is_closed:
-            self._http_client = httpx.AsyncClient(timeout=httpx.Timeout(35.0))
+            # Increase timeout to 130s to handle long-running AI requests (backend timeout is 120s)
+            self._http_client = httpx.AsyncClient(timeout=httpx.Timeout(130.0))
         return self._http_client
     
     async def close(self):
@@ -256,12 +257,13 @@ class AsyncApiClient(QObject):
     def query_assistant_async(self, message: str, on_success, on_error):
         """Query AI assistant with navigation support (async, non-blocking)"""
         async def _query():
-            async with httpx.AsyncClient() as client:
+            # Use fresh client for each thread/loop to avoid "Event loop is closed" error
+            # Timeout 130s to match backend configuration
+            async with httpx.AsyncClient(timeout=130.0) as client:
                 response = await client.post(
                     f"{self.base_url}/api/ai/assistant",
                     json={"message": message},
-                    headers=self._get_headers(),
-                    timeout=30.0
+                    headers=self._get_headers()
                 )
                 return self._handle_response(response)
         
@@ -330,19 +332,20 @@ class AsyncApiClient(QObject):
             on_error: Callback for errors
         """
         async def _consult():
-            client = await self._get_http_client()  # Persistent client
-            response = await client.post(
-                f"{self.base_url}/api/ai/consult",
-                json={
-                    "mode": mode,
-                    "message": message,
-                    "context": context,  # Already formatted as ConsultContext dict
-                    "language": "fr",
-                    "stream": False
-                },
-                headers=self._get_headers()
-            )
-            return self._handle_response(response)
+            # Use fresh client with 130s timeout to handle slow AI responses
+            async with httpx.AsyncClient(timeout=130.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/api/ai/consult",
+                    json={
+                        "mode": mode,
+                        "message": message,
+                        "context": context,  # Already formatted as ConsultContext dict
+                        "language": "fr",
+                        "stream": False
+                    },
+                    headers=self._get_headers()
+                )
+                return self._handle_response(response)
         
         task = ApiTask(_consult, on_success, on_error)
         self.thread_pool.start(task)
