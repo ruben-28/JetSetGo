@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+import os
+import sys
+# Add backend root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 Test d'Integration Amadeus API
 Tests complets pour verifier le bon fonctionnement de l'integration Amadeus.
@@ -17,7 +21,6 @@ import sys
 from datetime import datetime, timedelta
 
 # Add backend app to path
-sys.path.insert(0, r"c:\Users\ethan\OneDrive\Bureau\JetSetGo\backend")
 
 # Load environment variables
 from dotenv import load_dotenv

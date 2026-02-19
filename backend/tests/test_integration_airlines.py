@@ -1,3 +1,7 @@
+import os
+import sys
+# Add backend root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import asyncio
 import os
@@ -25,7 +29,7 @@ async def test_integration():
             origin="PAR",
             destination="JFK",
             depart_date=tomorrow,
-            limit=5
+            depart_date=tomorrow
         )
         
         if not results:

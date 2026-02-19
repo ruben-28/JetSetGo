@@ -1,3 +1,7 @@
+import os
+import sys
+# Add backend root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 SQL Server Connection Test Script
 Tests database connectivity and table creation for JetSetGo backend.

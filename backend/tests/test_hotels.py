@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+import os
+import sys
+# Add backend root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 Test de Recherche d'Hotels via Amadeus API
 Test simple pour verifier la fonctionnalite de recherche d'hotels.
@@ -13,7 +17,6 @@ import os
 load_dotenv()
 
 # Ajouter le chemin du backend
-sys.path.insert(0, r"c:\Users\ethan\OneDrive\Bureau\JetSetGo\backend")
 
 from app.gateway import TravelProvider
 

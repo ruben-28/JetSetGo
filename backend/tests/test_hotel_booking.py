@@ -1,3 +1,7 @@
+import os
+import sys
+# Add backend root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 Test hotel booking directly to see the actual error
 """

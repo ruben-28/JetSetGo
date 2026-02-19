@@ -1,3 +1,7 @@
+import os
+import sys
+# Add backend root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 CQRS Implementation Test Script
 Tests the refactored CQRS architecture with Event Sourcing.
@@ -13,7 +17,6 @@ import sys
 from datetime import datetime, timedelta
 
 # Add backend app to path
-sys.path.insert(0, r"c:\Users\ethan\OneDrive\Bureau\JetSetGo\backend")
 
 from app.gateway import TravelGateway
 from app.cqrs import FlightQueries, BookingCommands

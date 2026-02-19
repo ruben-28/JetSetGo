@@ -41,6 +41,7 @@ class TravelProvider:
         # Import moved here to avoid circular dependency (TravelService -> TravelProvider -> AmadeusService -> TravelService)
         from app.services.amadeus_service import AmadeusService
         self.amadeus_service = AmadeusService()
+        self.client = None
 
         if self.api_key and self.api_secret:
             try:

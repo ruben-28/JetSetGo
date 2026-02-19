@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+import os
+import sys
+# Add backend root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 Script de test pour verifier la connexion a Ollama dans Docker
 Usage: python test_ollama_connection.py

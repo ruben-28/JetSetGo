@@ -29,8 +29,12 @@ __all__ = [
     
     # Gateway implementations
     "TravelGateway",
+    "TravelProvider",
     "HFGateway",
     "OllamaGateway",
     "OpenAIProvider",
 ]
+
+# Alias for consistent naming
+TravelGateway = TravelProvider
 
