@@ -148,10 +148,34 @@ class AssistantOrchestrator:
         return {
             "destination": destination,
             "period": dates["raw"] if dates else None, # Compatibilité héritée
-            "preferences": [], # Peut être amélioré plus tard
+            "preferences": self._extract_preferences(message),
             "dates": dates,
             "travelers": None 
         }
+
+    def _extract_preferences(self, message: str) -> List[str]:
+        """Extraire les préférences de voyage via mots-clés."""
+        preferences = []
+        keywords = {
+            "plage": ["plage", "mer", "sable", "allonger", "baignade"],
+            "montagne": ["montagne", "ski", "randonnée", "alpes"],
+            "famille": ["famille", "enfant", "enfants", "calme"],
+            "couple": ["couple", "romantique", "amoureux"],
+            "aventure": ["aventure", "sport", "sensation", "découverte", "exotique"],
+            "pas cher": ["pas cher", "économique", "budget", "petit prix"],
+            "luxe": ["luxe", "standing", "premium", "étoiles"],
+            "culture": ["culture", "musée", "histoire", "monument"],
+            "gastronomie": ["gastronomie", "manger", "restaurant", "cuisine"],
+            "nature": ["nature", "vert", "campagne", "paysage"],
+            "ville": ["ville", "shopping", "urbain", "métropole"]
+        }
+        
+        message_lower = message.lower()
+        for pref, kws in keywords.items():
+            if any(kw in message_lower for kw in kws):
+                preferences.append(pref)
+                
+        return preferences
     
     async def _generate_ollama_response(self, prompt_type: str, context: Dict) -> str:
         """Générer une réponse en langage naturel utilisant Ollama."""
@@ -182,29 +206,48 @@ class AssistantOrchestrator:
             # Utiliser le contexte extrait
             period = context.get('period', '')
             prefs = context.get('preferences', [])
+            dest = context.get('destination')
             user_msg = context.get('message', '')
             
-            # Construire le texte contextualisé
-            period_text = f" pour {period}" if period else ""
-            prefs_text = f" (préférences: {', '.join(prefs)})" if prefs else ""
-            
-            user_prompt = (
-                f"L'utilisateur dit : '{user_msg}'\n"
-                f"CONTEXTE: Il cherche des idées de voyage{period_text}{prefs_text}.\n\n"
-                f"INSTRUCTIONS :\n"
-                f"1. Si la demande concerne un pays spécifique ou demande un avis (ex: 'est-ce que X est dangereux ?', 'avis sur Y') :\n"
-                f"   - Donne une réponse EN FRANÇAIS uniquement.\n"
-                f"   - Fais des paragraphes, sois équilibré et nuancé.\n"
-                f"   - Mentionne EXPLICITEMENT les risques sécurité/politique si nécessaire.\n"
-                f"   - NE PAS utiliser de format liste ni d'emojis.\n\n"
-                f"2. Sinon (si l'utilisateur veut juste des idées) :\n"
-                f"   - Suggère 3-4 destinations.\n"
-                f"   - Format OBLIGATOIRE: Nom - raison courte.\n"
-                f"   - N'utilise JAMAIS d'emojis."
-            )
+            period_text = f"en {period}" if period else ""
+            prefs_text = f", avec préférence pour : {', '.join(prefs)}" if prefs else ""
+
+            # CAS 1 : Demande d'AVIS sur une destination spécifique (ex: "Iran", "Japon")
+            if dest:
+                user_prompt = (
+                    f"L'utilisateur demande ton avis sur cette destination : '{dest}' ({period_text}).\n"
+                    f"Message complet : '{user_msg}'\n\n"
+                    f"Tâche : Donne une réponse structurée sur ce pays/ville.\n"
+                    f"- Commence par une phrase d'accroche sur l'attractivité (beauté, culture...).\n"
+                    f"- Paragraphe 1 : Pourquoi c'est bien (points forts).\n"
+                    f"- Paragraphe 2 : Sécurité et vigilance (sois franc s'il y a des risques politiques/géopolitiques).\n"
+                    f"- Termine par une phrase de conclusion.\n\n"
+                    f"Règles :\n"
+                    f"- Pas de liste de suggestions d'autres pays.\n"
+                    f"- Réponse équilibrée et objective.\n"
+                    f"- Langue : français uniquement. Pas d'emojis."
+                )
+
+            # CAS 2 : Demande de SUGGESTIONS (ex: "Où partir ?")
+            else:
+                user_prompt = (
+                    f"L'utilisateur demande : '{user_msg}'\n"
+                    f"Période : {period_text or 'non précisée'}{prefs_text}\n\n"
+                    f"Réponds en proposant des idées structurées par catégories. Pour chaque catégorie, tu DOIS lister 2 ou 3 destinations précises avec des tirets.\n\n"
+                    f"1) Mer / soleil :\n- [Destination 1] : [Pourquoi]\n- [Destination 2] : [Pourquoi]\n\n"
+                    f"2) Ski / montagne :\n- [Destination 1] : [Pourquoi]\n- [Destination 2] : [Pourquoi]\n\n"
+                    f"3) City trip :\n- [Ville 1] : [Pourquoi]\n- [Ville 2] : [Pourquoi]\n\n"
+                    f"4) Nature / aventure :\n- [Destination 1] : [Pourquoi]\n- [Destination 2] : [Pourquoi]\n\n"
+                    f"Règles :\n"
+                    f"- OBLIGATOIRE : Utilise des tirets (-) pour lister les destinations.\n"
+                    f"- Suggestion DOIT être un lieu précis (Ville, Pays, Région), pas juste 'La Méditerranée'.\n"
+                    f"- Pas de blabla général avant ou après les listes.\n"
+                    f"- Termine par 2 questions pour affiner (budget, durée).\n"
+                    f"- Langue : français uniquement. Pas d'emojis."
+                )
         
         else:  # general
-            user_prompt = f"L'utilisateur dit : '{context.get('message', '')}'\nRéponds EN FRANÇAIS. Sois sympathique mais sans utiliser d'emojis. Si la question porte sur la sécurité ou un avis (ex: Iran, Corée du Nord...), sois nuancé et mentionne les risques éventuels. Sois bref."
+            user_prompt = f"L'utilisateur dit : '{context.get('message', '')}'\nRéponds EN FRANÇAIS. Sois sympathique mais sans utiliser d'emojis. Si la question porte sur la sécurité ou un avis, sois nuancé. Sois bref."
         
         messages = [
             {"role": "system", "content": system_message},
@@ -215,11 +258,16 @@ class AssistantOrchestrator:
             # Créer un OllamaGateway frais pour chaque requête pour éviter
             # les problèmes de réutilisation de client (client est fermé après sortie de contexte)
             async with OllamaGateway() as gateway:
+                # print(f"DEBUG PROMPT:\n{messages}\n")
+                
                 result = await gateway.chat_completion(
                     messages=messages,
                     temperature=0.7,
                     max_tokens=650
                 )
+                
+                # print(f"DEBUG RESPONSE:\n{result['content']}\n")
+                
                 return result["content"]
         
         except Exception as e:
@@ -236,18 +284,70 @@ class AssistantOrchestrator:
             "navigate_to_hotels": f"Je vous amène à la recherche d'hôtels à {dest}.",
             "navigate_to_packages": f"Je vous amène à la recherche de packages pour {dest}.",
             "clarification": "Pouvez-vous me donner plus de détails ?",
-            "inspiration": (
-                "Voici quelques destinations populaires :\n\n"
-                "🗼 **Paris** - Culture, gastronomie, monuments historiques\n"
-                "🗾 **Tokyo** - Technologie, temples, cuisine exceptionnelle\n"
-                "🗽 **New York** - Ville dynamique, shopping, arts\n"
-                "🏖️ **Barcelone** - Plages, architecture, vie nocturne\n\n"
-                "Laquelle vous intéresse ?"
-            ),
+            "inspiration": self._fallback_inspiration(context),
             "general": "Comment puis-je vous aider dans votre voyage ?"
         }
         
         return fallbacks.get(prompt_type, fallbacks["general"])
+    
+    def _fallback_inspiration(self, context: Dict) -> str:
+        """Fallback contextuel pour l'inspiration quand Ollama est indisponible."""
+        dest = context.get('destination')
+        prefs = context.get('preferences', [])
+        period = context.get('period', '')
+        
+        # Si c'est une demande d'avis sur une destination précise
+        if dest:
+            return (
+                f"Je ne peux pas accéder aux informations détaillées sur **{dest}** pour le moment.\n\n"
+                f"En général, il est conseillé de vérifier :\n"
+                f"- Les conditions de sécurité sur le site France Diplomatie.\n"
+                f"- La météo pour la période concernée.\n\n"
+                f"Voulez-vous que je cherche des vols pour {dest} ?"
+            )
+
+        # Suggestions par préférence
+        suggestions_map = {
+            "plage": [
+                "**Nice** - Plages magnifiques sur la Cote d'Azur",
+                "**Bali** - Plages de sable fin et eaux cristallines",
+                "**Crete** - Plages paradisiaques en Mediterranee",
+                "**Cancun** - Plages de reve et mer turquoise",
+            ],
+            "montagne": [
+                "**Chamonix** - Au pied du Mont-Blanc, randonnees exceptionnelles",
+                "**Zermatt** - Vue imprenable sur le Cervin",
+                "**Innsbruck** - Alpes autrichiennes, nature preservee",
+                "**Whistler** - Montagnes canadiennes spectaculaires",
+            ],
+            "culture": [
+                "**Rome** - Art, histoire et gastronomie italienne",
+                "**Kyoto** - Temples anciens et jardins zen",
+                "**Athenes** - Berceau de la civilisation occidentale",
+                "**Istanbul** - Carrefour des cultures",
+            ],
+        }
+        
+        # Trouver des suggestions correspondantes
+        destinations = []
+        for pref in prefs:
+            if pref in suggestions_map:
+                destinations.extend(suggestions_map[pref])
+                break
+        
+        if not destinations:
+            destinations = [
+                "**Barcelone** - Plages, architecture, vie nocturne",
+                "**Paris** - Culture, gastronomie, monuments historiques",
+                "**Tokyo** - Technologie, temples, cuisine exceptionnelle",
+                "**New York** - Ville dynamique, shopping, arts",
+            ]
+        
+        period_text = f" en {period}" if period else ""
+        result = f"Voici quelques destinations{period_text} :\n\n"
+        result += "\n".join(destinations[:4])
+        result += "\n\nLaquelle vous interesse ?"
+        return result
     
     async def _handle_flight_search(self, entities: Dict, user_message: str) -> Dict:
         """Gérer l'intention de recherche de vol."""
@@ -352,6 +452,7 @@ class AssistantOrchestrator:
         context = {
             "period": entities.get("period"),
             "preferences": entities.get("preferences", []),
+            "destination": entities.get("destination"),
             "message": user_message
         }
         

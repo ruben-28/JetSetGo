@@ -29,6 +29,12 @@ class HuggingFaceGateway(BaseGateway):
         ]
 
         try:
+            # 1. Vérification rapide par mots-clés pour les cas difficiles (Inspiration)
+            inspiration_keywords = ["conseil", "partir ou", "où partir", "destination", "idée de voyage", "meilleur endroit"]
+            if any(kw in text.lower() for kw in inspiration_keywords):
+                self.logger.info(f"Intention 'inspiration' détectée par mots-clés pour: {text}")
+                return {"intent": "inspiration", "confidence": 1.0}
+
             client = await self._get_client()
             # Note : zero_shot_classification n'est pas asynchrone dans le client actuel,
             # mais généralement assez rapide ou devrait être enveloppé dans run_in_executor si bloquant.
@@ -119,12 +125,21 @@ class HuggingFaceGateway(BaseGateway):
             "package_search": ["package", "séjour", "all inclusive"],
             "booking_history": ["réservation", "booking", "mes voyages", "historique"],
             "budget_advice": ["budget", "prix", "cher", "coût"],
-            "inspiration": ["idée", "whereto", "suggestion", "conseil", "vacances"]
+            "inspiration": [
+                "idée", "whereto", "suggestion", "conseil", "vacances", "partir ou", 
+                "où partir", "destination", "recommandation", "meilleur endroit"
+            ]
         }
         
         detected_intent = "general"
+        
+        # Prioriser l'inspiration si des mots clés forts sont présents
+        if any(kw in text for kw in keywords["inspiration"]):
+            return {"intent": "inspiration", "confidence": 0.9}
+            
         match_count = 0
         for intent, kws in keywords.items():
+            if intent == "inspiration": continue # Déjà traité
             for kw in kws:
                 if kw in text:
                     detected_intent = intent
