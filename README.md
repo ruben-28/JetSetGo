@@ -1,95 +1,95 @@
 # ✈️ JetSetGo - Travel with AI
 
-![JetSetGo Banner](desktop/app/assets/logo.jpg)
+![JetSetGo Banner](desktop\assets\logo.jpeg)
 
-**JetSetGo** est une application de voyage moderne intégrant l'Intelligence Artificielle pour offrir une expérience de réservation personnalisée (Vols, Hôtels, Activités). 
+**JetSetGo** is a modern travel application integrating Artificial Intelligence to offer a personalized booking experience (Flights, Hotels, Activities).
 
-Ce projet a été réalisé dans le cadre du projet de fin de semestre "Systèmes Windows" (Hiver 2026).
-
----
-
-## 🏛️ Architecture Académique
-
-Le projet respecte scrupuleusement les spécifications architecturales suivantes :
-
-### 1. Architecture Distribuée Multi-Tiers
-- **Frontend Desktop (PySide6)** : Application riche implémentant le pattern **MVP (Model-View-Presenter)** et une architecture **Microfrontends**.
-- **Backend (FastAPI)** : API RESTful structurée selon le pattern **CQRS (Command-Query Responsibility Segregation)**.
-- **Event Sourcing** : Persistance basée sur les événements (les événements sont la source de vérité, projetés ensuite dans un Read Model).
-- **API Gateway** : Point d'accès centralisé vers les services externes (Amadeus, Hugging Face).
-
-### 2. Intégration IA & Cloud
-- **Analyse de Sentiment** : Utilisation de modèles **Hugging Face** pour analyser les préférences utilisateur.
-- **Agent Intelligent** : Assistant virtuel capable de naviguer dans l'interface et de pré-remplir les formulaires (LLM/Ollama).
-- **Fournisseur de Voyage** : Intégration complète de l'API **Amadeus** pour les données de vol et d'hôtel en temps réel.
+This project was developed as part of the end-of-semester project for the "Windows Systems" course (Winter 2026).
 
 ---
 
-## 🚀 Installation & Démarrage
+## 🏛️ Academic Architecture
 
-### Prérequis
+The project strictly follows these architectural specifications:
+
+### 1. Multi-Tier Distributed Architecture
+- **Desktop Frontend (PySide6)**: A rich application implementing the **MVP (Model-View-Presenter)** pattern and a **Microfrontends** architecture.
+- **Backend (FastAPI)**: RESTful API structured according to the **CQRS (Command-Query Responsibility Segregation)** pattern.
+- **Event Sourcing**: Event-based persistence (events are the single source of truth, which are then projected into a Read Model).
+- **API Gateway**: Centralized access point to external services (Amadeus, Hugging Face).
+
+### 2. AI & Cloud Integration
+- **Sentiment Analysis**: Use of **Hugging Face** models to analyze user preferences.
+- **Intelligent Agent**: A virtual assistant capable of navigating the interface and pre-filling forms (LLM/Ollama).
+- **Travel Provider**: Full integration of the **Amadeus** API for real-time flight and hotel data.
+
+---
+
+## 🚀 Installation & Getting Started
+
+### Prerequisites
 - Python 3.10+
-- Clés API (Amadeus, Hugging Face - voir `.env.example`)
-- (Optionnel) Ollama pour l'assistant local
+- API Keys (Amadeus, Hugging Face - see `.env.example`)
+- (Optional) Ollama for the local assistant
 
-### 1. Configuration de l'Environnement
+### 1. Environment Setup
 
-Clonez le projet et configurez les variables d'environnement :
+Clone the project and configure the environment variables:
 
 ```powershell
-# Cloner le dépôt
+# Clone the repository
 git clone <url-repo>
 cd JetSetGo
 
-# Créer un environnement virtuel
+# Create a virtual environment
 python -m venv venv
 .\venv\Scripts\activate
 
-# Installer les dépendances
+# Install dependencies
 pip install -r requirements.txt
 
-# Configurer les clés API
+# Configure API keys
 copy .env.example .env
-# ÉDITER LE FICHIER .env AVEC VOS CLÉS !
+# EDIT THE .env FILE WITH YOUR KEYS!
 ```
 
-### 2. Démarrer le Backend (API)
+### 2. Start the Backend (API)
 
 ```powershell
-# Depuis la racine du projet
+# From the project root
 uvicorn backend.app.main:app --reload
 ```
-*L'API sera accessible sur http://127.0.0.1:8000/docs*
+*The API will be accessible at http://127.0.0.1:8000/docs*
 
-### 3. Démarrer l'Application Desktop
+### 3. Start the Desktop Application
 
 ```powershell
-# Dans un nouveau terminal (toujours avec venv activé)
+# In a new terminal (still with venv activated)
 python desktop/app/main.py
 ```
 
 ---
 
-## 📚 Fonctionnalités
+## 📚 Features
 
-1.  **Recherche de Vols** : Autocomplétion, dates, filtres (Amadeus API).
-2.  **Réservation d'Hôtels** : Recherche par ville et réservation.
-3.  **Packages** : Offres combinées Vol + Hôtel.
-4.  **Historique (Event Sourcing)** : Visualisation des voyages passés et graphiques de dépenses.
-5.  **Assistant IA** : Chatbot contextuel capable de piloter l'application.
-
----
-
-## 🛠️ Stack Technique
-
-- **Langage** : Python 3.10+
-- **Frontend** : PySide6 (Qt for Python), QtCharts
-- **Backend** : FastAPI, SQLAlchemy, SQLite (Event Store)
-- **IA** : Hugging Face Inference API, Ollama (LangChain compatible)
-- **Services** : Amadeus for Developers
+1.  **Flight Search**: Autocompletion, dates, filters (Amadeus API).
+2.  **Hotel Booking**: Search by city and booking.
+3.  **Packages**: Combined Flight + Hotel offers.
+4.  **History (Event Sourcing)**: Visualization of past trips and expense charts.
+5.  **AI Assistant**: Contextual chatbot capable of controlling the application.
 
 ---
 
-## 👥 Auteur
+## 🛠️ Technical Stack
 
-Projet réalisé par **Ruben** pour le cours de Systèmes Windows.
+- **Language**: Python 3.10+
+- **Frontend**: PySide6 (Qt for Python), QtCharts
+- **Backend**: FastAPI, SQLAlchemy, SQLite (Event Store)
+- **AI**: Hugging Face Inference API, Ollama (LangChain compatible)
+- **Services**: Amadeus for Developers
+
+---
+
+## 👥 Authors
+
+Project created by **Ethan Sarfati** and **Ruben Bensimon** for the Windows Systems course.
