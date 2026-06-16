@@ -1,6 +1,13 @@
-# ✈️ JetSetGo - Travel with AI
+<h1>
+  <img
+    src="desktop/assets/logo.jpeg"
+    alt="JetSetGo Logo"
+    width="55"
+    align="center"
+  />
+  &nbsp; JetSetGo - Travel with AI
+</h1>
 
-![JetSetGo Banner](desktop/assets/logo.jpeg)
 
 **JetSetGo** is a modern travel application integrating Artificial Intelligence to offer a personalized booking experience (Flights, Hotels, Activities).
 
